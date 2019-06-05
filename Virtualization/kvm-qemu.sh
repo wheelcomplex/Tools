@@ -642,6 +642,11 @@ function qemu_func() {
     fi
     fail=0
 
+	if [ -z "$(which pip)" ]
+	then
+		echo "command pip not found, please install it first (sudo apt install python-pip)"
+		exit 1
+	fi
     pip install sphinx
 
     if [ "$OS" = "Linux" ]; then
