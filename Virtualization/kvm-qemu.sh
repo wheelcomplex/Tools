@@ -68,6 +68,9 @@ username=""
 #* If your CPU is Intel, you need activate in __BIOS__ VT-x
 #    * (last letter can change, you can activate [TxT ](https://software.intel.com/en-us/blogs/2012/09/25/how-to-enable-an-intel-trusted-execution-technology-capable-server) too, and any other feature, but VT-* is very important)
 
+set -x
+set -e
+
 function changelog() {
 cat << EndOfCL
     # 24.04.2019 - QEMU 4
