@@ -965,7 +965,7 @@ OS="$(uname -s)"
 
 case "$COMMAND" in
 'all')
-    apt-get install language-pack-UTF-8
+    apt-get install language-pack-en
     qemu_func
     seabios_func
     if [ "$OS" = "Linux" ]; then
