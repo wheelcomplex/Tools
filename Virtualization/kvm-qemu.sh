@@ -617,12 +617,25 @@ function replace_seabios_clues_public() {
 
 
 function qemu_func() {
-    cd /tmp || return
 
-    echo '[+] Cleaning QEMU old install if exists'
-    rm -r /usr/share/qemu >/dev/null 2>&1
-    dpkg -r ubuntu-vm-builder python-vm-builder >/dev/null 2>&1
-    dpkg -l |grep qemu |cut -d " " -f 3|xargs dpkg --purge --force-all >/dev/null 2>&1
+    pip install sphinx
+
+    if [ "$OS" = "Linux" ]; then
+        add-apt-repository universe
+        apt-get update
+        apt-get install checkinstall openbios-* libssh2-1-dev vde2 liblzo2-dev libghc-gtk3-dev libsnappy-dev libbz2-dev libxml2-dev google-perftools libgoogle-perftools-dev libvde-dev -y 2>/dev/null
+        apt-get install debhelper ibusb-1.0-0-dev libxen-dev uuid-dev xfslibs-dev libjpeg-dev libusbredirparser-dev device-tree-compiler texinfo libbluetooth-dev libbrlapi-dev libcap-ng-dev libcurl4-gnutls-dev libfdt-dev gnutls-dev libiscsi-dev libncurses5-dev libnuma-dev libcacard-dev librados-dev librbd-dev libsasl2-dev libseccomp-dev libspice-server-dev \
+        libaio-dev libcap-dev libattr1-dev libpixman-1-dev libgtk2.0-bin  libxml2-utils systemtap-sdt-dev texinfo -y 2>/dev/null
+        # qemu docs required
+        perl -MCPAN -e install "Perl/perl-podlators"
+
+    elif [ "$OS" = "Darwin" ]; then
+        _check_brew
+        brew install pkg-config libtool jpeg gnutls glib ncurses pixman libpng vde gtk+3 libssh2 libssh2 libvirt snappy libcapn gperftools glib -y
+    fi
+
+    cd /tmp || exit 1
+    fail=0
 
     echo '[+] Downloading QEMU source code'
     if [ ! -f qemu-$qemu_version.tar.xz ]; then
@@ -640,28 +653,11 @@ function qemu_func() {
         echo "[-] Failed to extract, check if download was correct"
         exit 1
     fi
-    fail=0
+    echo '[+] Cleaning QEMU old install if exists'
+    rm -r /usr/share/qemu >/dev/null 2>&1
+    dpkg -r ubuntu-vm-builder python-vm-builder >/dev/null 2>&1
+    dpkg -l |grep qemu |cut -d " " -f 3|xargs dpkg --purge --force-all >/dev/null 2>&1
 
-	if [ -z "$(which pip)" ]
-	then
-		echo "command pip not found, please install it first (sudo apt install python-pip)"
-		exit 1
-	fi
-    pip install sphinx
-
-    if [ "$OS" = "Linux" ]; then
-        add-apt-repository universe
-        apt-get update
-        apt-get install checkinstall openbios-* libssh2-1-dev vde2 liblzo2-dev libghc-gtk3-dev libsnappy-dev libbz2-dev libxml2-dev google-perftools libgoogle-perftools-dev libvde-dev -y 2>/dev/null
-        apt-get install debhelper ibusb-1.0-0-dev libxen-dev uuid-dev xfslibs-dev libjpeg-dev libusbredirparser-dev device-tree-compiler texinfo libbluetooth-dev libbrlapi-dev libcap-ng-dev libcurl4-gnutls-dev libfdt-dev gnutls-dev libiscsi-dev libncurses5-dev libnuma-dev libcacard-dev librados-dev librbd-dev libsasl2-dev libseccomp-dev libspice-server-dev \
-        libaio-dev libcap-dev libattr1-dev libpixman-1-dev libgtk2.0-bin  libxml2-utils systemtap-sdt-dev texinfo -y 2>/dev/null
-        # qemu docs required
-        perl -MCPAN -e install "Perl/perl-podlators"
-
-    elif [ "$OS" = "Darwin" ]; then
-        _check_brew
-        brew install pkg-config libtool jpeg gnutls glib ncurses pixman libpng vde gtk+3 libssh2 libssh2 libvirt snappy libcapn gperftools glib -y
-    fi
     # WOOT
     # some checks may be depricated, but keeping them for compatibility with old versions
 
@@ -968,9 +964,15 @@ OS="$(uname -s)"
 #apt-get update && apt-get upgrade
 #make
 
+dpkg -l | grep "^ii" | grep -q "language-pack-en" || apt-get install language-pack-en
+if [ -z "$(which pip)" ]
+then
+	echo "command pip not found, try to install it first (sudo apt install python-pip)"
+	apt install python-pip -y || exit $?
+fi
+
 case "$COMMAND" in
 'all')
-    apt-get install language-pack-en
     qemu_func
     seabios_func
     if [ "$OS" = "Linux" ]; then
