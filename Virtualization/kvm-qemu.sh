@@ -179,9 +179,9 @@ function install_haxm_mac() {
 function install_libguestfs() {
 
     echo "[+] Check for previous version of LibGuestFS"
-    sudo dpkg --purge --force-all "libguestfs-*" 2>/dev/null
+    apt purge -y "libguestfs-*"  
 
-    sudo apt install gperf flex bison libaugeas-dev libhivex-dev supermin ocaml-nox libhivex-ocaml genisoimage libhivex-ocaml-dev libmagic-dev libjansson-dev -y 2>/dev/null
+    apt install gperf flex bison libaugeas-dev libhivex-dev supermin ocaml-nox libhivex-ocaml genisoimage libhivex-ocaml-dev libmagic-dev libjansson-dev -y 2>/dev/null
     cd /tmp || return
     wget "http://download.libguestfs.org/1.40-stable/libguestfs-$libguestfs_version.tar.gz"
     tar xf "libguestfs-$libguestfs_version.tar.gz"
@@ -515,6 +515,7 @@ function install_virt_manager() {
     else
         echo "export LIBVIRT_DEFAULT_URI=qemu:///system" >> "$HOME/.bashrc"
     fi
+	echo "[+] install virt-manager done"
 }
 
 function install_kvm_linux_apt() {
