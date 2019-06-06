@@ -539,10 +539,10 @@ function install_kvm_linux_apt() {
     # Ubuntu 18.04:
     # /dev/kvm permissions always changed to root after reboot
     # "chown root:libvirt /dev/kvm" doesnt help
-    addgroup kvm
+    grep -q '^kvm:' /etc/group || addgroup kvm
     usermod -a -G kvm "$(whoami)"
     if [[ ! -z "$username" ]]; then
-        usermod -a -G kvm "$username"
+        usermod -a -G kvm "$username" || true
     fi
     chgrp kvm /dev/kvm
     if [ ! -f /etc/udev/rules.d/50-qemu-kvm.rules ]; then
