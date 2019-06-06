@@ -263,6 +263,13 @@ function install_libvmi() {
 
 	virtualenv /tmp/MyEnv
 	source /tmp/MyEnv/bin/activate
+
+	if [ -z "$(which pip3)" ]
+	then
+		echo "command pip3 not found, try to install it first (sudo apt install python3-pip)"
+		apt install python-pip3 -y || exit $?
+	fi
+
 	pip3 install --upgrade testresources setuptools pip wheel
 	pip3 install capstone
 	pip3 install --editable rekall/rekall-lib
@@ -618,6 +625,12 @@ function replace_seabios_clues_public() {
 
 function qemu_func() {
 
+	if [ -z "$(which pip)" ]
+	then
+		echo "command pip not found, try to install it first (sudo apt install python-pip)"
+		apt install python-pip -y || exit $?
+	fi
+
     pip install sphinx
 
     if [ "$OS" = "Linux" ]; then
@@ -971,12 +984,6 @@ OS="$(uname -s)"
 
 apt --fix-broken install -y
 dpkg -l | grep "^ii" | grep -q "language-pack-en" || apt-get install language-pack-en
-if [ -z "$(which pip)" ]
-then
-	echo "command pip not found, try to install it first (sudo apt install python-pip)"
-	apt install python-pip -y || exit $?
-fi
-
 case "$COMMAND" in
 'all')
     qemu_func
