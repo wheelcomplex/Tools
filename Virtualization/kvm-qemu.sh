@@ -958,12 +958,18 @@ if [ "$EUID" -ne 0 ]; then
    echo 'This script must be run as root'
    exit 1
 fi
+if [ "$HOME" != "/root" ]
+then
+   echo 'This script must be run as root, if you are run by sudo please use sudo -H'
+   exit 1
+fi
 
 OS="$(uname -s)"
 #add-apt-repository universe
 #apt-get update && apt-get upgrade
 #make
 
+apt --fix-broken install -y
 dpkg -l | grep "^ii" | grep -q "language-pack-en" || apt-get install language-pack-en
 if [ -z "$(which pip)" ]
 then
