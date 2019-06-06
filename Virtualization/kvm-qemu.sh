@@ -129,9 +129,10 @@ EndOfHelp
 function grub_iommu(){
     # ToDo make a sed with regex which works on all cases
     echo "[+] Updating GRUB for IOMMU support"
-    if sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="intel_iommu=on"/g' /etc/default/grub; then
+	sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="intel_iommu=on"/g' /etc/default/grub || true
+	if [ -z "$(cat /etc/default/grub | grep 'intel_iommu=on')" ]  then
         echo "[-] GRUB patching failed, add intel_iommu=on manually"
-        return 1
+        return 0
     fi
     sudo update-grub
     echo "[+] Please reboot"
