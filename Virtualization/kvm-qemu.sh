@@ -185,7 +185,7 @@ function install_libguestfs() {
 
     apt install gperf flex bison libaugeas-dev libhivex-dev supermin ocaml-nox libhivex-ocaml genisoimage libhivex-ocaml-dev libmagic-dev libjansson-dev -y 2>/dev/null
     cd /tmp || return
-    wget "http://download.libguestfs.org/1.40-stable/libguestfs-$libguestfs_version.tar.gz"
+    test ! -s "libguestfs-$libguestfs_version.tar.gz" && wget "http://download.libguestfs.org/1.40-stable/libguestfs-$libguestfs_version.tar.gz"
     tar xf "libguestfs-$libguestfs_version.tar.gz"
     cd libguestfs-$libguestfs_version || return
     ./configure
@@ -353,9 +353,7 @@ EOH
 	test -n "$oldpkgs" && echo "$oldpkgs" | xargs apt purge -y 2>/dev/null
 
     cd /tmp || return
-    if [ -f  libvirt-$libvirt_version.tar.xz ]; then
-        rm -r libvirt-$libvirt_version
-    else
+    if [ ! -f  libvirt-$libvirt_version.tar.xz ]; then
         wget https://libvirt.org/sources/libvirt-$libvirt_version.tar.xz
     fi
     tar xf libvirt-$libvirt_version.tar.xz
@@ -487,7 +485,9 @@ function install_virt_manager() {
     pip install PyGObject -U
 
     cd /tmp || return
-    if wget https://libvirt.org/sources/glib/libvirt-glib-1.0.0.tar.gz; then
+	test ! -f "libvirt-glib-1.0.0.tar.gz" && wget https://libvirt.org/sources/glib/libvirt-glib-1.0.0.tar.gz
+    if [ -f "libvirt-glib-1.0.0.tar.gz" ]
+   	then
         tar xf libvirt-glib-1.0.0.tar.gz
         cd libvirt-glib-1.0.0 || return
         aclocal && libtoolize --force
@@ -496,7 +496,7 @@ function install_virt_manager() {
         make -j$(nproc)
         #ToDo add blacklist
         checkinstall --pkgname=libvirt-glib-1.0-0 --default
-        wget http://launchpadlibrarian.net/297448356/gir1.2-libvirt-glib-1.0_1.0.0-1_amd64.deb
+        test ! -f gir1.2-libvirt-glib-1.0_1.0.0-1_amd64.deb && wget http://launchpadlibrarian.net/297448356/gir1.2-libvirt-glib-1.0_1.0.0-1_amd64.deb
         dpkg -i gir1.2-libvirt-glib-1.0_1.0.0-1_amd64.deb
 
         /sbin/ldconfig
@@ -654,6 +654,7 @@ function qemu_func() {
     echo '[+] Downloading QEMU source code'
     if [ ! -f qemu-$qemu_version.tar.xz ]; then
         wget "https://download.qemu.org/qemu-$qemu_version.tar.xz"
+		rm -f qemu-$qemu_version.tar.xz.sig
         wget "https://download.qemu.org/qemu-$qemu_version.tar.xz.sig"
     fi
 	gpg --keyserver pool.sks-keyservers.net --recv-keys CEACC9E15534EBABB82D3FA03353C9CEF108B584 || true
@@ -1055,7 +1056,7 @@ case "$COMMAND" in
 'noip')
     if [ "$OS" = "Linux" ]; then
         cd /tmp || return
-        wget http://www.no-ip.com/client/linux/noip-duc-linux.tar.gz
+        test ! -f noip-duc-linux.tar.gz && wget http://www.no-ip.com/client/linux/noip-duc-linux.tar.gz
         tar xf noip-duc-linux.tar.gz
         rm noip-duc-linux.tar.gz
         cd "noip-*" || return
