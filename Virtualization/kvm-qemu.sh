@@ -377,7 +377,7 @@ EOH
 
         if [[ ! -z "$libvirt_so_path" ]]; then
             # #ln -s /usr/lib64/libvirt-qemu.so /lib/x86_64-linux-gnu/libvirt-qemu.so.0
-            for so_path in $(ls ${libvirt_so_path}libvirt*.so); do ln -s $so_path /lib/$(uname -m)-linux-gnu/$(basename $so_path) 2>/dev/null; done
+            for so_path in $(ls ${libvirt_so_path}libvirt*.so); do ln -sf $so_path /lib/$(uname -m)-linux-gnu/$(basename $so_path) ; done
         fi
 
     elif [ "$OS" = "Darwin" ]; then
@@ -406,7 +406,7 @@ EOH
     )
     for file in "${FILES[@]}"; do
         if [ -f $file ]; then
-            sudo aa-complain $file
+            aa-complain $file || true
         fi 
     done
     cd /tmp || return
@@ -1000,6 +1000,7 @@ apt-get build-dep qemu qemu-system-x86 qemu-kvm -y
 dpkg -l | grep "^ii" | grep -q "language-pack-en" || apt-get install language-pack-en -y
 dpkg -l | grep "^ii" | grep -q "libnfs-dev" || apt-get install libnfs-dev -y
 dpkg -l | grep "^ii" | grep -q "libiscsi-dev" || apt-get install libiscsi-dev-dev -y
+dpkg -l | grep "^ii" | grep -q "apparmor-utils" || apt-get install apparmor-utils -y
 
 case "$COMMAND" in
 'all')
