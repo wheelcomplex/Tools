@@ -666,10 +666,6 @@ function qemu_func() {
         echo "[-] Failed to extract, check if download was correct"
         exit 1
     fi
-    echo '[+] Cleaning QEMU old install if exists'
-    rm -r /usr/share/qemu >/dev/null 2>&1
-    dpkg -r ubuntu-vm-builder python-vm-builder >/dev/null 2>&1
-    dpkg -l |grep qemu |cut -d " " -f 3|xargs dpkg --purge --force-all >/dev/null 2>&1
 
     # WOOT
     # some checks may be depricated, but keeping them for compatibility with old versions
@@ -705,7 +701,14 @@ function qemu_func() {
                 fi
                 make -j$(nproc)
                 if [ "$OS" = "Linux" ]; then
-                    checkinstall -D --pkgname=qemu-$qemu_version --nodoc --showinstall=no --default
+				    echo '[+] Cleaning QEMU old install if exists'
+				    rm -r /usr/share/qemu >/dev/null 2>&1
+				    dpkg -r ubuntu-vm-builder python-vm-builder >/dev/null 2>&1
+					oldpkgs="$(dpkg -l |grep qemu |cut -d ' ' -f 3)"
+					echo "[-] removinge old qemu packages: $oldpkgs ..."
+					echo "$oldpkgs" | xargs dpkg --purge --force-all >/dev/null 2>&1
+				
+                    checkinstall -D --pkgname=qemu-$qemu_version --nodoc --showinstall=no --default || exit 1
                 elif [ "$OS" = "Darwin" ]; then
                     make -j$(nproc) install
                 fi
@@ -724,7 +727,8 @@ function qemu_func() {
                 else
                     echo '[-] Install failed'
                 fi
-                if [ ! grep -q -E "^tss:" /etc/group ]; then
+				grep -q -E "^tss:" /etc/group
+                if [ $? -ne 0 ]; then
                     groupadd "tss"
                     useradd -g "tss" "tss"
                     echo "[+] Creating Group and User: tss"
@@ -983,7 +987,11 @@ OS="$(uname -s)"
 #make
 
 apt --fix-broken install -y
-dpkg -l | grep "^ii" | grep -q "language-pack-en" || apt-get install language-pack-en
+apt-get build-dep qemu qemu-system-x86 qemu-kvm -y
+dpkg -l | grep "^ii" | grep -q "language-pack-en" || apt-get install language-pack-en -y
+dpkg -l | grep "^ii" | grep -q "libnfs-dev" || apt-get install libnfs-dev -y
+dpkg -l | grep "^ii" | grep -q "libiscsi-dev" || apt-get install libiscsi-dev-dev -y
+
 case "$COMMAND" in
 'all')
     qemu_func
