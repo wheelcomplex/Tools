@@ -215,7 +215,7 @@ function install_libvmi() {
 	# LibVMI
     cd /tmp || return
 
-    if [ ! -f "libvmi" ]; then
+    if [ ! -d "libvmi" ]; then
         git clone https://github.com/libvmi/libvmi.git
         echo "[+] Cloned LibVMI repo"
     fi
@@ -235,7 +235,7 @@ function install_libvmi() {
 	# LibVMI Python
 	cd /tmp || return
 
-    if [ ! -f "python_Libvmi" ]; then
+    if [ ! -d "python_Libvmi" ]; then
 		# actual
 		# https://github.com/libvmi/python/tree/76d9ea85eefa0d77f6ad4d6089e757e844763917
 		# git checkout add_vmi_request_page_fault
@@ -256,7 +256,7 @@ function install_libvmi() {
 	# Rekall
 	cd /tmp || return
 
-    if [ ! -f "rekall" ]; then
+    if [ ! -d "rekall" ]; then
         git clone https://github.com/google/rekall.git
         echo "[+] Cloned Rekall repo"
     fi
@@ -500,12 +500,12 @@ function install_virt_manager() {
         /sbin/ldconfig
     fi
 
-    if [ ! -f "virt-manager" ]; then
+    if [ ! -d "virt-manager" ]; then
         #git clone -b v1.5-maint https://github.com/virt-manager/virt-manager.git
         git clone https://github.com/virt-manager/virt-manager.git
         echo "[+] Cloned Virt Manager repo"
     fi
-    cd "virt-manager" || return
+    cd "virt-manager" || exit 1
     apt-get install gobject-introspection intltool pkg-config python-lxml python3-libxml2 libxml2-dev libxslt-dev python-dev gir1.2-gtk-vnc-2.0 gir1.2-spiceclientgtk-3.0 libgtk-3-dev -y
     # py3
     python3 setup.py build
