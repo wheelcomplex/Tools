@@ -346,8 +346,9 @@ EOH
     fi
 
     echo "[+] Checking/deleting old versions of Libvirt"
-    apt-get purge libvirt0 libvirt-bin 2>/dev/null
-    dpkg -l|grep "libvirt-[0-9]\{1,2\}\.[0-9]\{1,2\}\.[0-9]\{1,2\}"|cut -d " " -f 3|sudo xargs dpkg --purge --force-all 2>/dev/null
+    apt-get purge libvirt0 libvirt-bin -y 2>/dev/null
+	oldpkgs=$(dpkg -l|grep "libvirt-[0-9]\{1,2\}\.[0-9]\{1,2\}\.[0-9]\{1,2\}"|cut -d " " -f 3)
+	test -n "$oldpkgs" && echo "$oldpkgs" | xargs apt purge -y 2>/dev/null
 
     cd /tmp || return
     if [ -f  libvirt-$libvirt_version.tar.xz ]; then
@@ -707,9 +708,10 @@ function qemu_func() {
 				    dpkg -r ubuntu-vm-builder python-vm-builder >/dev/null 2>&1
 					oldpkgs="$(dpkg -l |grep qemu |cut -d ' ' -f 3)"
 					echo "[-] removinge old qemu packages: $oldpkgs ..."
-					echo "$oldpkgs sgabios" | xargs apt purge -y >/dev/null 2>&1
+					test -n "$oldpkgs" && echo "$oldpkgs sgabios" | xargs apt purge -y >/dev/null 2>&1
 				
                     checkinstall -D --pkgname=qemu-$qemu_version --nodoc --showinstall=no --default || fail=$?
+					dpkg -l | grep '^ii' | grep -q "qemu-$qemu_version" || fail=$?
                 elif [ "$OS" = "Darwin" ]; then
                     make -j$(nproc) install || fail=$?
                 fi
@@ -735,7 +737,7 @@ function qemu_func() {
                     groupadd "tss"
                     useradd -g "tss" "tss"
                     echo "[+] Creating Group and User: tss"
-                else:
+                else
                     echo "[?] tss Group and User exist, skip"
                 fi
             else
@@ -759,6 +761,7 @@ function qemu_func() {
 }
 
 function seabios_func() {
+	echo "disabled for bug: Makefile:253: recipe for target 'src/fw/ssdt-misc.hex' failed" && return 0
     cd /tmp || return
     fail=0
     echo '[+] Installing SeaBios dependencies'
@@ -768,6 +771,7 @@ function seabios_func() {
     fi
     if git clone https://github.com/coreboot/seabios.git; then
         cd seabios || return
+		# git checkout -b 1.12-stable remotes/origin/1.12-stable
         if declare -f -F "replace_seabios_clues"; then
             replace_seabios_clues
         else
@@ -798,6 +802,7 @@ function seabios_func() {
             fi
         else
             echo '[-] Bios compilation failed'
+			exit 1
         fi
         cd - || return
     else
