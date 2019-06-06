@@ -648,7 +648,6 @@ function qemu_func() {
     fi
 
     cd /tmp || exit 1
-    fail=0
 
     echo '[+] Downloading QEMU source code'
     if [ ! -f qemu-$qemu_version.tar.xz ]; then
@@ -682,35 +681,44 @@ function qemu_func() {
             cd qemu-$qemu_version || return
             # add in future --enable-netmap https://sgros-students.blogspot.com/2016/05/installing-and-testing-netmap.html
             # remove --target-list=i386-softmmu,x86_64-softmmu,i386-linux-user,x86_64-linux-user  if you want all targets
+			fail=0
             if [ "$OS" = "Linux" ]; then
                 # --enable-sparse
                 #QTARGETS=--target-list=i386-softmmu,x86_64-softmmu,i386-linux-user,x86_64-linux-user
                 #if [[ ! -z "$QEMU_TARGERS" ]]; then
                 #    QEMU_TARGERS=""
                 #fi
-                ./configure --prefix=/usr --libexecdir=/usr/lib/qemu --localstatedir=/var --bindir=/usr/bin/ --enable-gnutls --enable-docs --enable-gtk --enable-vnc --enable-vnc-sasl --enable-vnc-png --enable-vnc-jpeg --enable-curl --enable-kvm  --enable-linux-aio --enable-cap-ng --enable-vhost-net --enable-vhost-crypto --enable-spice --enable-usb-redir --enable-lzo --enable-snappy --enable-bzip2 --enable-coroutine-pool --enable-libssh2 --enable-libxml2 --enable-tcmalloc --enable-replication --enable-tools --enable-capstone
+                ./configure --prefix=/usr --libexecdir=/usr/lib/qemu --localstatedir=/var --bindir=/usr/bin/ --enable-gnutls --enable-docs --enable-gtk --enable-vnc --enable-vnc-sasl --enable-vnc-png --enable-vnc-jpeg --enable-curl --enable-kvm  --enable-linux-aio --enable-cap-ng --enable-vhost-net --enable-vhost-crypto --enable-spice --enable-usb-redir --enable-lzo --enable-snappy --enable-bzip2 --enable-coroutine-pool --enable-libssh2 --enable-libxml2 --enable-tcmalloc --enable-replication --enable-tools --enable-capstone || fail=$?
             elif [ "$OS" = "Darwin" ]; then
                 # --enable-vhost-net --enable-vhost-crypto
-                ./configure --prefix=/usr --libexecdir=/usr/lib/qemu --localstatedir=/var --bindir=/usr/bin/ --enable-gnutls --enable-docs  --enable-vnc --enable-vnc-sasl --enable-vnc-png --enable-vnc-jpeg --enable-curl --enable-hax --enable-usb-redir --enable-lzo --enable-snappy --enable-bzip2 --enable-coroutine-pool  --enable-libxml2 --enable-tcmalloc --enable-replication --enable-tools --enable-capstone
+                ./configure --prefix=/usr --libexecdir=/usr/lib/qemu --localstatedir=/var --bindir=/usr/bin/ --enable-gnutls --enable-docs  --enable-vnc --enable-vnc-sasl --enable-vnc-png --enable-vnc-jpeg --enable-curl --enable-hax --enable-usb-redir --enable-lzo --enable-snappy --enable-bzip2 --enable-coroutine-pool  --enable-libxml2 --enable-tcmalloc --enable-replication --enable-tools --enable-capstone || fail=$?
             fi
-            if  [ $? -eq 0 ]; then
+            if  [ $fail -eq 0 ]; then
                 echo '[+] Starting Install it'
                 #dpkg -i qemu*.deb
                 if [ -f /usr/share/qemu/qemu_logo_no_text.svg ]; then
                     rm /usr/share/qemu/qemu_logo_no_text.svg
                 fi
                 make -j$(nproc)
+				fail=0
                 if [ "$OS" = "Linux" ]; then
 				    echo '[+] Cleaning QEMU old install if exists'
 				    rm -r /usr/share/qemu >/dev/null 2>&1
 				    dpkg -r ubuntu-vm-builder python-vm-builder >/dev/null 2>&1
 					oldpkgs="$(dpkg -l |grep qemu |cut -d ' ' -f 3)"
 					echo "[-] removinge old qemu packages: $oldpkgs ..."
-					echo "$oldpkgs" | xargs dpkg --purge --force-all >/dev/null 2>&1
+					echo "$oldpkgs sgabios" | xargs apt purge -y >/dev/null 2>&1
 				
-                    checkinstall -D --pkgname=qemu-$qemu_version --nodoc --showinstall=no --default || exit 1
+                    checkinstall -D --pkgname=qemu-$qemu_version --nodoc --showinstall=no --default || fail=$?
                 elif [ "$OS" = "Darwin" ]; then
-                    make -j$(nproc) install
+                    make -j$(nproc) install || fail=$?
+                fi
+				echo $fail
+                if  [ $fail -eq 0 ]; then
+                    echo '[+] Patched, compiled and installed'
+                else
+                    echo '[-] Install failed'
+					exit $fail
                 fi
                 # hack for libvirt/virt-manager
                 if [ ! -f /usr/bin/qemu-system-x86_64-spice ]; then
@@ -722,13 +730,8 @@ function qemu_func() {
                 if [ ! -f /usr/bin/kvm ]; then
                     ln -s /usr/bin/qemu-system-x86_64 /usr/bin/kvm
                 fi
-                if  [ $? -eq 0 ]; then
-                    echo '[+] Patched, compiled and installed'
-                else
-                    echo '[-] Install failed'
-                fi
-				grep -q -E "^tss:" /etc/group
-                if [ $? -ne 0 ]; then
+				
+				if [ -z "$(grep -E '^tss:' /etc/group)" ]; then
                     groupadd "tss"
                     useradd -g "tss" "tss"
                     echo "[+] Creating Group and User: tss"
@@ -737,6 +740,7 @@ function qemu_func() {
                 fi
             else
                 echo '[-] Compilling failed'
+				exit 1
             fi
         #else
         #    echo '[-] Check previous output'
