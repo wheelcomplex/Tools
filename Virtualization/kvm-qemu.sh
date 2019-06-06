@@ -440,7 +440,7 @@ EOH
         if [[ ! -z "$username" ]]; then
             usermod -G $groupname -a "$username"
         fi
-        echo "[+] You should logout and login "
+        echo "[+] Build libvirt done, you should logout and login "
     fi
 
 }
@@ -639,7 +639,7 @@ function qemu_func() {
         apt-get install debhelper ibusb-1.0-0-dev libxen-dev uuid-dev xfslibs-dev libjpeg-dev libusbredirparser-dev device-tree-compiler texinfo libbluetooth-dev libbrlapi-dev libcap-ng-dev libcurl4-gnutls-dev libfdt-dev gnutls-dev libiscsi-dev libncurses5-dev libnuma-dev libcacard-dev librados-dev librbd-dev libsasl2-dev libseccomp-dev libspice-server-dev \
         libaio-dev libcap-dev libattr1-dev libpixman-1-dev libgtk2.0-bin  libxml2-utils systemtap-sdt-dev texinfo -y 2>/dev/null
         # qemu docs required
-        perl -MCPAN -e install "Perl/perl-podlators"
+        echo "" | perl -MCPAN -e install "Perl/perl-podlators"
 
     elif [ "$OS" = "Darwin" ]; then
         _check_brew
@@ -652,8 +652,9 @@ function qemu_func() {
     if [ ! -f qemu-$qemu_version.tar.xz ]; then
         wget "https://download.qemu.org/qemu-$qemu_version.tar.xz"
         wget "https://download.qemu.org/qemu-$qemu_version.tar.xz.sig"
-        gpg --verify "https://download.qemu.org/qemu-$qemu_version.tar.xz.sig"
     fi
+	gpg --keyserver pool.sks-keyservers.net --recv-keys CEACC9E15534EBABB82D3FA03353C9CEF108B584 || true
+    gpg --verify "qemu-$qemu_version.tar.xz.sig"
 
     if [ ! -f qemu-$qemu_version.tar.xz ]; then
         echo "[-] Download qemu-$qemu_version failed"
@@ -994,7 +995,7 @@ OS="$(uname -s)"
 #make
 
 add-apt-repository universe
-apt-get update
+apt-get update >/dev/null
 
 apt --fix-broken install -y
 apt-get build-dep qemu qemu-system-x86 qemu-kvm -y
