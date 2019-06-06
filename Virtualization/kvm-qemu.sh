@@ -130,7 +130,8 @@ function grub_iommu(){
     # ToDo make a sed with regex which works on all cases
     echo "[+] Updating GRUB for IOMMU support"
 	sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="intel_iommu=on"/g' /etc/default/grub || true
-	if [ -z "$(cat /etc/default/grub | grep 'intel_iommu=on')" ]  then
+	if [ -z "$(cat /etc/default/grub | grep 'intel_iommu=on')" ]
+  	then
         echo "[-] GRUB patching failed, add intel_iommu=on manually"
         return 0
     fi
@@ -1097,3 +1098,9 @@ case "$COMMAND" in
 *)
     usage;;
 esac
+
+# clean up
+rm -f /etc/apt/preferences.d/libvirtinstall
+apt install virt-viewer -y
+echo "[+] all finished"
+
