@@ -657,7 +657,7 @@ function qemu_func() {
 		rm -f qemu-$qemu_version.tar.xz.sig
         wget "https://download.qemu.org/qemu-$qemu_version.tar.xz.sig"
     fi
-	gpg --keyserver pool.sks-keyservers.net --recv-keys CEACC9E15534EBABB82D3FA03353C9CEF108B584 || true
+    gpg --list-keys CEACC9E15534EBABB82D3FA03353C9CEF108B584 || gpg --keyserver pool.sks-keyservers.net --recv-keys CEACC9E15534EBABB82D3FA03353C9CEF108B584 || true
     gpg --verify "qemu-$qemu_version.tar.xz.sig"
 
     if [ ! -f qemu-$qemu_version.tar.xz ]; then
@@ -1101,7 +1101,7 @@ case "$COMMAND" in
 esac
 
 # clean up
-rm -f /etc/apt/preferences.d/libvirtinstall
+#rm -f /etc/apt/preferences.d/libvirtinstall
 apt install virt-viewer -y
 echo "[+] all finished"
 
