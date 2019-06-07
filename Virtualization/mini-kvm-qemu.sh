@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# Use Ubuntu 18.04 LTS
+
+# mini version, qemu-kvm + libvirt + virt-viewer
+
 # Copyright (C) 2011-2019 DoomedRaven.
 # This file is part of Tools - https://github.com/doomedraven/Tools
 # See the file 'LICENSE.md' for copying permission.
@@ -54,6 +58,8 @@ qemu_version=4.0.0
 # libvirt - https://libvirt.org/sources/
 # changelog - https://libvirt.org/news.html
 libvirt_version=5.3.0
+# https://virt-manager.org/download/
+virt_viewer_version=8.0.0
 # virt-manager - https://github.com/virt-manager/virt-manager/releases
 virt_manager_version=2.1.0
 # http://download.libguestfs.org/
@@ -72,6 +78,7 @@ set -e
 
 function changelog() {
 cat << EndOfCL
+    # 07.06.2019 - mini version, qemu-kvm + libvirt + virt-viewer 
     # 24.04.2019 - QEMU 4
     # 28.03.2019 - Huge cleanup, fixes, QEMU 4-RC2 testing in dev
     # 24.02.2019 - Add Mosh + support for Linux TCP BBR - https://www.cyberciti.biz/cloud-computing/increase-your-linux-server-internet-speed-with-tcp-bbr-congestion-control/
@@ -93,7 +100,8 @@ function usage() {
 cat << EndOfHelp
     Usage: $0 <func_name> <args>
     Commands - are case insensitive:
-        All - <username_optional> - Execs QEMU/SeaBios/KVM, username is optional
+        mini [username_optional] - install qemu-kvm + libvirt + virt-viewer and patch grub config file, username is optional
+        All <username_optional> - Execs QEMU/SeaBios/KVM, username is optional
         qemu - Install QEMU from source,
             DEFAULT support are x86 and x64, set ENV var QEMU_TARGERS=all to install for all arches
         SeaBios - Install SeaBios and repalce QEMU bios file
@@ -108,7 +116,7 @@ cat << EndOfHelp
                 * Example Win7x64 /VMs/Win7x64.qcow2 0 5 /var/lib/libvirt/images/ 192.168.1
                 https://wiki.qemu.org/Documentation/CreateSnapshot
         libvirt [username_optional] - install libvirt, username is optional
-		Libvmi - install LibVMI
+        Libvmi - install LibVMI
         Virtmanager - install virt-manager
         virt_viewer - install virt-viewer
         Libguestfs - install libguestfs
@@ -129,14 +137,14 @@ EndOfHelp
 function grub_iommu(){
     # ToDo make a sed with regex which works on all cases
     echo "[+] Updating GRUB for IOMMU support"
-	sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="intel_iommu=on"/g' /etc/default/grub || true
-	if [ -z "$(cat /etc/default/grub | grep 'intel_iommu=on')" ]
-  	then
+        sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="intel_iommu=on"/g' /etc/default/grub || true
+        if [ -z "$(cat /etc/default/grub | grep 'intel_iommu=on')" ]
+          then
         echo "[-] GRUB patching failed, add intel_iommu=on manually"
         return 0
     fi
     update-grub
-    echo "[+] Please reboot"
+    echo "[+] grub config updated, please reboot"
 }
 
 function _sed_aux(){
@@ -184,7 +192,7 @@ function install_libguestfs() {
     apt purge -y "libguestfs-*"  
 
     apt install gperf flex bison libaugeas-dev libhivex-dev supermin ocaml-nox libhivex-ocaml genisoimage libhivex-ocaml-dev libmagic-dev libjansson-dev -y 2>/dev/null
-    cd /tmp || return
+    cd /tmp/qemutmp || return
     test ! -s "libguestfs-$libguestfs_version.tar.gz" && wget "http://download.libguestfs.org/1.40-stable/libguestfs-$libguestfs_version.tar.gz"
     tar xf "libguestfs-$libguestfs_version.tar.gz"
     cd libguestfs-$libguestfs_version || return
@@ -195,27 +203,27 @@ function install_libguestfs() {
 }
 
 function install_libvmi() {
-	# IMPORTANT:
-	# 1)
-	# LibVMI will have KVM support if libvirt is available during compile time.
-	#
-	# 2)
-	# Enable GDB access to your KVM VM. This is done by adding '-s' to the VM creation line or, by modifying the VM XML definition used by libvirt as follows:
+        # IMPORTANT:
+        # 1)
+        # LibVMI will have KVM support if libvirt is available during compile time.
+        #
+        # 2)
+        # Enable GDB access to your KVM VM. This is done by adding '-s' to the VM creation line or, by modifying the VM XML definition used by libvirt as follows:
     # Change:
     # <domain type='kvm'>
     # to:
     # <domain type='kvm' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
-	#
+        #
     # Add:
     # <qemu:commandline>
     #   <qemu:arg value='-s'/>
     # </qemu:commandline>
     # under the <domain> level of the XML.
 
-	# The -s switch is a shorthand for -gdb tcp::1234
+        # The -s switch is a shorthand for -gdb tcp::1234
 
-	# LibVMI
-    cd /tmp || return
+        # LibVMI
+    cd /tmp/qemutmp || return
 
     if [ ! -d "libvmi" ]; then
         git clone https://github.com/libvmi/libvmi.git
@@ -223,110 +231,110 @@ function install_libvmi() {
     fi
     cd "libvmi" || return
 
-	# install deps
-	apt-get install -y cmake flex bison libglib2.0-dev libjson-c-dev libyajl-dev
-	# other deps
-	apt-get install -y pkg-config
-	mkdir build
-	cd build || return
-	cmake -DENABLE_XEN=ON -DENABLE_KVM=ON -DENABLE_XENSTORE=OFF -DENABLE_BAREFLANK=OFF ..
-	make -j$(nproc)
-	make install
-	/sbin/ldconfig
+        # install deps
+        apt-get install -y cmake flex bison libglib2.0-dev libjson-c-dev libyajl-dev
+        # other deps
+        apt-get install -y pkg-config
+        mkdir build
+        cd build || return
+        cmake -DENABLE_XEN=ON -DENABLE_KVM=ON -DENABLE_XENSTORE=OFF -DENABLE_BAREFLANK=OFF ..
+        make -j$(nproc)
+        make install
+        /sbin/ldconfig
 
-	# LibVMI Python
-	cd /tmp || return
+        # LibVMI Python
+        cd /tmp/qemutmp || return
 
     if [ ! -d "python_Libvmi" ]; then
-		# actual
-		# https://github.com/libvmi/python/tree/76d9ea85eefa0d77f6ad4d6089e757e844763917
-		# git checkout add_vmi_request_page_fault
-		# git pull
+        # actual
+        # https://github.com/libvmi/python/tree/76d9ea85eefa0d77f6ad4d6089e757e844763917
+        # git checkout add_vmi_request_page_fault
+        # git pull
         git clone https://github.com/libvmi/python.git python_Libvmi
         echo "[+] Cloned LibVMI Python repo"
     fi
     cd "python_Libvmi" || return
 
-	# install deps
+        # install deps
     apt-get install -y python3-pkgconfig python3-cffi python3-future
-	python setup.py build
-	python setup.py install
-	# python3
-	python3 setup.py build
-	python3 setup.py install
+        python setup.py build
+        python setup.py install
+        # python3
+        python3 setup.py build
+        python3 setup.py install
 
-	# Rekall
-	cd /tmp || return
+        # Rekall
+        cd /tmp/qemutmp || return
 
     if [ ! -d "rekall" ]; then
         git clone https://github.com/google/rekall.git
         echo "[+] Cloned Rekall repo"
     fi
 
-	virtualenv /tmp/MyEnv
-	source /tmp/MyEnv/bin/activate
+        virtualenv /tmp/qemutmp/MyEnv
+        source /tmp/qemutmp/MyEnv/bin/activate
 
-	if [ -z "$(which pip3)" ]
-	then
-		echo "command pip3 not found, try to install it first (apt install python3-pip)"
-		apt install python-pip3 -y || exit $?
-	fi
+        if [ -z "$(which pip3)" ]
+        then
+        echo "command pip3 not found, try to install it first (apt install python3-pip)"
+        apt install python-pip3 -y || exit $?
+        fi
 
-	pip3 install --upgrade testresources setuptools pip wheel
-	pip3 install capstone
-	pip3 install --editable rekall/rekall-lib
-	# ERROR: rekall-efilter 1.6.0 has requirement future==0.16.0
-	pip3 install future==0.16.0
-	# TypeError: Set() missing 1 required positional argument: 'value'
-	pip3 install pyaff4==0.26.post6
-	pip3 install --editable rekall/rekall-core
-	pip3 install --editable rekall/rekall-agent
-	pip3 install --editable rekall
-	pip3 install --upgrade pyasn1
-	deactivate
+        pip3 install --upgrade testresources setuptools pip wheel
+        pip3 install capstone
+        pip3 install --editable rekall/rekall-lib
+        # ERROR: rekall-efilter 1.6.0 has requirement future==0.16.0
+        pip3 install future==0.16.0
+        # TypeError: Set() missing 1 required positional argument: 'value'
+        pip3 install pyaff4==0.26.post6
+        pip3 install --editable rekall/rekall-core
+        pip3 install --editable rekall/rekall-agent
+        pip3 install --editable rekall
+        pip3 install --upgrade pyasn1
+        deactivate
 }
 
 # In progress...
 # Errors: "The selected hypervisor has no events support!" - only Xen supported unfortunately
 # 
 function install_pyvmidbg() {
-	# deps
-	apt-get install python3-docopt python3-lxml cabextract
+        # deps
+        apt-get install python3-docopt python3-lxml cabextract
 
-	# libvmi config entry
-	#
+        # libvmi config entry
+        #
     # /etc/libvmi.conf:
-	# win10 {
-	#    ostype = "Windows";
-	#    rekall_profile = "/etc/libvmi/rekall-profile.json";
-	# }
+        # win10 {
+        #    ostype = "Windows";
+        #    rekall_profile = "/etc/libvmi/rekall-profile.json";
+        # }
 
-	# Make Windows 10 profile
-	# Copy from Guest OS file "C:\Windows\System32\ntoskrnl.exe"
-	# rekall peinfo -f <path/to/ntoskrnl.exe>
-	#
-	# Once the PDB filename and GUID is known, creating the Rekall profile is done in two steps:
-	# rekall fetch_pdb <PDB filename> <GUID>
-	# rekall parse_pdb <PDB filename> > rekall-profile.json
-	#
-	# In case of Windows 10:
-	# rekall fetch_pdb ntkrnlmp <GUID>
-	# May cause error like "ERROR:rekall.1:Unrecognized type T_64PUINT4" (not dangerous)
-	# rekall parse_pdb ntkrnlmp > rekall-profile.json
+        # Make Windows 10 profile
+        # Copy from Guest OS file "C:\Windows\System32\ntoskrnl.exe"
+        # rekall peinfo -f <path/to/ntoskrnl.exe>
+        #
+        # Once the PDB filename and GUID is known, creating the Rekall profile is done in two steps:
+        # rekall fetch_pdb <PDB filename> <GUID>
+        # rekall parse_pdb <PDB filename> > rekall-profile.json
+        #
+        # In case of Windows 10:
+        # rekall fetch_pdb ntkrnlmp <GUID>
+        # May cause error like "ERROR:rekall.1:Unrecognized type T_64PUINT4" (not dangerous)
+        # rekall parse_pdb ntkrnlmp > rekall-profile.json
 
-	# install rekall profile
-	# /etc/libvmi/rekall-profile.json
+        # install rekall profile
+        # /etc/libvmi/rekall-profile.json
 
-	# git clone https://github.com/Wenzel/pyvmidbg.git
-	# virtualenv -p python3 venv
-	# source venv/bin/activate
-	# pip install .
+        # git clone https://github.com/Wenzel/pyvmidbg.git
+        # virtualenv -p python3 venv
+        # source venv/bin/activate
+        # pip install .
 
-	# python3 -m vmidbg 5000 <vm_name> --address 0.0.0.0 cmd -d
+        # python3 -m vmidbg 5000 <vm_name> --address 0.0.0.0 cmd -d
 
-	# git clone https://github.com/radare/radare2.git
-	# sys/install.sh
-	# r2 -d gdb://127.0.0.1:5000 -b 64
+        # git clone https://github.com/radare/radare2.git
+        # sys/install.sh
+        # r2 -d gdb://127.0.0.1:5000 -b 64
 
 }
 
@@ -334,7 +342,7 @@ function install_libvirt() {
     # http://ask.xmodulo.com/compile-virt-manager-debian-ubuntu.html
     #rm -r /usr/local/lib/python2.7/dist-packages/libvirt*
 
-	# doomedraven changed to libvirtinstall - so later not to forget what it is intended for
+        # doomedraven changed to libvirtinstall - so later not to forget what it is intended for
     if [ ! -f /etc/apt/preferences.d/libvirtinstall ]; then
     # set to hold to avoid side problems
         cat >> /etc/apt/preferences.d/libvirtinstall << EOH
@@ -349,10 +357,10 @@ EOH
 
     echo "[+] Checking/deleting old versions of Libvirt"
     apt-get purge libvirt0 libvirt-bin -y 2>/dev/null
-	oldpkgs=$(dpkg -l|grep "libvirt-[0-9]\{1,2\}\.[0-9]\{1,2\}\.[0-9]\{1,2\}"|cut -d " " -f 3)
-	test -n "$oldpkgs" && echo "$oldpkgs" | xargs apt purge -y 2>/dev/null
+        oldpkgs=$(dpkg -l|grep "libvirt-[0-9]\{1,2\}\.[0-9]\{1,2\}\.[0-9]\{1,2\}"|cut -d " " -f 3)
+        test -n "$oldpkgs" && echo "$oldpkgs" | xargs apt purge -y 2>/dev/null
 
-    cd /tmp || return
+    cd /tmp/qemutmp || return
     if [ ! -f  libvirt-$libvirt_version.tar.xz ]; then
         wget https://libvirt.org/sources/libvirt-$libvirt_version.tar.xz
     fi
@@ -375,7 +383,7 @@ EOH
             export PKG_CONFIG_PATH=/usr/lib64/pkgconfig/
         fi
 
-        if [[ ! -z "$libvirt_so_path" ]]; then
+        if [ ! -z "$libvirt_so_path" ]; then
             # #ln -s /usr/lib64/libvirt-qemu.so /lib/x86_64-linux-gnu/libvirt-qemu.so.0
             for so_path in $(ls ${libvirt_so_path}libvirt*.so); do ln -sf $so_path /lib/$(uname -m)-linux-gnu/$(basename $so_path) ; done
         fi
@@ -409,7 +417,7 @@ EOH
             aa-complain $file || true
         fi 
     done
-    cd /tmp || return
+    cd /tmp/qemutmp || return
 
     if [ ! -f v$libvirt_version.zip ]; then
         wget https://github.com/libvirt/libvirt-python/archive/v$libvirt_version.zip
@@ -437,7 +445,7 @@ EOH
             groupadd libvirt
         fi
         usermod -G $groupname -a "$(whoami)"
-        if [[ ! -z "$username" ]]; then
+        if [ ! -z "$username" ]; then
             usermod -G $groupname -a "$username"
         fi
         echo "[+] Build libvirt done, you should logout and login "
@@ -484,10 +492,10 @@ function install_virt_manager() {
     pip3 install PyGObject -U
     pip install PyGObject -U
 
-    cd /tmp || return
-	test ! -f "libvirt-glib-1.0.0.tar.gz" && wget https://libvirt.org/sources/glib/libvirt-glib-1.0.0.tar.gz
+    cd /tmp/qemutmp || return
+        test ! -f "libvirt-glib-1.0.0.tar.gz" && wget https://libvirt.org/sources/glib/libvirt-glib-1.0.0.tar.gz
     if [ -f "libvirt-glib-1.0.0.tar.gz" ]
-   	then
+           then
         tar xf libvirt-glib-1.0.0.tar.gz
         cd libvirt-glib-1.0.0 || return
         aclocal && libtoolize --force
@@ -517,19 +525,18 @@ function install_virt_manager() {
     else
         echo "export LIBVIRT_DEFAULT_URI=qemu:///system" >> "$HOME/.bashrc"
     fi
-	echo "[+] install virt-manager done"
+        echo "[+] install virt-manager done"
 }
 
 function install_kvm_linux_apt() {
-    sed -i 's/# deb-src/deb-src/g' /etc/apt/sources.list
-    apt-get update 2>/dev/null
-    apt-get install build-essential python-pip python3-pip gcc pkg-config cpu-checker intltool -y 2>/dev/null
-    apt-get install gtk-update-icon-cache -y 2>/dev/null
+
+    apt-get install build-essential python-pip python3-pip gcc pkg-config cpu-checker intltool -y >/dev/null
+    apt-get install gtk-update-icon-cache -y >/dev/null
 
     # WSL support
-    apt-get install gcc make gnutls-bin -y
+    apt-get install gcc make gnutls-bin -y >/dev/null
     # remove old
-    apt-get purge libvirt0 libvirt-bin -y
+    apt-get purge libvirt0 libvirt-bin -y >/dev/null
     install_libvirt
 
     systemctl enable libvirtd.service
@@ -544,7 +551,7 @@ function install_kvm_linux_apt() {
     # "chown root:libvirt /dev/kvm" doesnt help
     grep -q '^kvm:' /etc/group || addgroup kvm
     usermod -a -G kvm "$(whoami)"
-    if [[ ! -z "$username" ]]; then
+    if [ ! -z "$username" ]; then
         usermod -a -G kvm "$username" || true
     fi
     chgrp kvm /dev/kvm
@@ -629,18 +636,29 @@ function replace_seabios_clues_public() {
 
 function qemu_func() {
 
-	if [ -z "$(which pip)" ]
-	then
-		echo "command pip not found, try to install it first (apt install python-pip)"
-		apt install python-pip -y || exit $?
-	fi
+    #todo: add task check for all task
+    debfiles="$(ls -A /tmp/qemutmp/qemu-$qemu_version/qemu-${qemu_version}*.deb 2>/dev/null)"
 
-    pip install sphinx
+    if [ -n "$debfiles" -a -f "/tmp/qemutmp/task.qemu.done" ]
+    then
+        echo "[+] qemu already compiled."
+        echo "$debfiles"
+        echo "[-] remove /tmp/qemutmp/task.qemu.done file for re-build"
+        return 0
+    fi
+
+    if [ -z "$(which pip)" ]
+    then
+        echo "command pip not found, try to install it first (apt install python-pip)"
+        apt install python-pip -y || exit $?
+    fi
+
+    pip install sphinx >/dev/null
 
     if [ "$OS" = "Linux" ]; then
-        apt-get install checkinstall openbios-* libssh2-1-dev vde2 liblzo2-dev libghc-gtk3-dev libsnappy-dev libbz2-dev libxml2-dev google-perftools libgoogle-perftools-dev libvde-dev -y 2>/dev/null
+        apt-get install checkinstall openbios-* libssh2-1-dev vde2 liblzo2-dev libghc-gtk3-dev libsnappy-dev libbz2-dev libxml2-dev google-perftools libgoogle-perftools-dev libvde-dev -y >/dev/null
         apt-get install debhelper ibusb-1.0-0-dev libxen-dev uuid-dev xfslibs-dev libjpeg-dev libusbredirparser-dev device-tree-compiler texinfo libbluetooth-dev libbrlapi-dev libcap-ng-dev libcurl4-gnutls-dev libfdt-dev gnutls-dev libiscsi-dev libncurses5-dev libnuma-dev libcacard-dev librados-dev librbd-dev libsasl2-dev libseccomp-dev libspice-server-dev \
-        libaio-dev libcap-dev libattr1-dev libpixman-1-dev libgtk2.0-bin  libxml2-utils systemtap-sdt-dev texinfo -y 2>/dev/null
+        libaio-dev libcap-dev libattr1-dev libpixman-1-dev libgtk2.0-bin  libxml2-utils systemtap-sdt-dev texinfo -y >/dev/null
         # qemu docs required
         echo "" | perl -MCPAN -e install "Perl/perl-podlators"
 
@@ -649,12 +667,12 @@ function qemu_func() {
         brew install pkg-config libtool jpeg gnutls glib ncurses pixman libpng vde gtk+3 libssh2 libssh2 libvirt snappy libcapn gperftools glib -y
     fi
 
-    cd /tmp || exit 1
+    cd /tmp/qemutmp || exit 1
 
     echo '[+] Downloading QEMU source code'
     if [ ! -f qemu-$qemu_version.tar.xz ]; then
         wget "https://download.qemu.org/qemu-$qemu_version.tar.xz"
-		rm -f qemu-$qemu_version.tar.xz.sig
+        rm -f qemu-$qemu_version.tar.xz.sig
         wget "https://download.qemu.org/qemu-$qemu_version.tar.xz.sig"
     fi
     gpg --list-keys CEACC9E15534EBABB82D3FA03353C9CEF108B584 || gpg --keyserver pool.sks-keyservers.net --recv-keys CEACC9E15534EBABB82D3FA03353C9CEF108B584 || true
@@ -685,14 +703,17 @@ function qemu_func() {
             cd qemu-$qemu_version || return
             # add in future --enable-netmap https://sgros-students.blogspot.com/2016/05/installing-and-testing-netmap.html
             # remove --target-list=i386-softmmu,x86_64-softmmu,i386-linux-user,x86_64-linux-user  if you want all targets
-			fail=0
+            fail=0
             if [ "$OS" = "Linux" ]; then
                 # --enable-sparse
-                #QTARGETS=--target-list=i386-softmmu,x86_64-softmmu,i386-linux-user,x86_64-linux-user
-                #if [[ ! -z "$QEMU_TARGERS" ]]; then
-                #    QEMU_TARGERS=""
-                #fi
-                ./configure --prefix=/usr --libexecdir=/usr/lib/qemu --localstatedir=/var --bindir=/usr/bin/ --enable-gnutls --enable-docs --enable-gtk --enable-vnc --enable-vnc-sasl --enable-vnc-png --enable-vnc-jpeg --enable-curl --enable-kvm  --enable-linux-aio --enable-cap-ng --enable-vhost-net --enable-vhost-crypto --enable-spice --enable-usb-redir --enable-lzo --enable-snappy --enable-bzip2 --enable-coroutine-pool --enable-libssh2 --enable-libxml2 --enable-tcmalloc --enable-replication --enable-tools --enable-capstone || fail=$?
+                QTARGETS=" --target-list=i386-softmmu,x86_64-softmmu,i386-linux-user,x86_64-linux-user"
+                if [ ! -z "$QEMU_TARGERS" ]; then
+                    QTARGETS=" --target-list={$QEMU_TARGERS}"
+                fi
+                if [ "$QEMU_TARGERS" = "ALL" -o "$QEMU_TARGERS" = "all" ]; then
+                    QTARGETS=""
+                fi
+                ./configure --prefix=/usr --libexecdir=/usr/lib/qemu --localstatedir=/var --bindir=/usr/bin/${QTARGETS} --enable-gnutls --enable-docs --enable-gtk --enable-vnc --enable-vnc-sasl --enable-vnc-png --enable-vnc-jpeg --enable-curl --enable-kvm  --enable-linux-aio --enable-cap-ng --enable-vhost-net --enable-vhost-crypto --enable-spice --enable-usb-redir --enable-lzo --enable-snappy --enable-bzip2 --enable-coroutine-pool --enable-libssh2 --enable-libxml2 --enable-tcmalloc --enable-replication --enable-tools --enable-capstone || fail=$?
             elif [ "$OS" = "Darwin" ]; then
                 # --enable-vhost-net --enable-vhost-crypto
                 ./configure --prefix=/usr --libexecdir=/usr/lib/qemu --localstatedir=/var --bindir=/usr/bin/ --enable-gnutls --enable-docs  --enable-vnc --enable-vnc-sasl --enable-vnc-png --enable-vnc-jpeg --enable-curl --enable-hax --enable-usb-redir --enable-lzo --enable-snappy --enable-bzip2 --enable-coroutine-pool  --enable-libxml2 --enable-tcmalloc --enable-replication --enable-tools --enable-capstone || fail=$?
@@ -704,26 +725,26 @@ function qemu_func() {
                     rm /usr/share/qemu/qemu_logo_no_text.svg
                 fi
                 make -j$(nproc)
-				fail=0
+        fail=0
                 if [ "$OS" = "Linux" ]; then
-				    echo '[+] Cleaning QEMU old install if exists'
-				    rm -r /usr/share/qemu >/dev/null 2>&1
-				    dpkg -r ubuntu-vm-builder python-vm-builder >/dev/null 2>&1
-					oldpkgs="$(dpkg -l |grep qemu |cut -d ' ' -f 3)"
-					echo "[-] removinge old qemu packages: $oldpkgs ..."
-					test -n "$oldpkgs" && echo "$oldpkgs sgabios" | xargs apt purge -y >/dev/null 2>&1
-				
+            echo '[+] Cleaning QEMU old install if exists'
+                    rm -r /usr/share/qemu >/dev/null 2>&1
+                    dpkg -r ubuntu-vm-builder python-vm-builder >/dev/null 2>&1
+                        oldpkgs="$(dpkg -l |grep qemu |cut -d ' ' -f 3)"
+                        echo "[-] removinge old qemu packages: $oldpkgs ..."
+                        test -n "$oldpkgs" && echo "$oldpkgs sgabios" | xargs apt purge -y >/dev/null 2>&1
+                
                     checkinstall -D --pkgname=qemu-$qemu_version --nodoc --showinstall=no --default || fail=$?
-					dpkg -l | grep '^ii' | grep -q "qemu-$qemu_version" || fail=$?
+                        dpkg -l | grep '^ii' | grep -q "qemu-$qemu_version" || fail=$?
                 elif [ "$OS" = "Darwin" ]; then
                     make -j$(nproc) install || fail=$?
                 fi
-				echo $fail
+                echo $fail
                 if  [ $fail -eq 0 ]; then
                     echo '[+] Patched, compiled and installed'
                 else
                     echo '[-] Install failed'
-					exit $fail
+                        exit $fail
                 fi
                 # hack for libvirt/virt-manager
                 if [ ! -f /usr/bin/qemu-system-x86_64-spice ]; then
@@ -735,8 +756,8 @@ function qemu_func() {
                 if [ ! -f /usr/bin/kvm ]; then
                     ln -s /usr/bin/qemu-system-x86_64 /usr/bin/kvm
                 fi
-				
-				if [ -z "$(grep -E '^tss:' /etc/group)" ]; then
+                
+                if [ -z "$(grep -E '^tss:' /etc/group)" ]; then
                     groupadd "tss"
                     useradd -g "tss" "tss"
                     echo "[+] Creating Group and User: tss"
@@ -745,7 +766,7 @@ function qemu_func() {
                 fi
             else
                 echo '[-] Compilling failed'
-				exit 1
+                exit 1
             fi
         #else
         #    echo '[-] Check previous output'
@@ -764,8 +785,8 @@ function qemu_func() {
 }
 
 function seabios_func() {
-	echo "disabled for bug: Makefile:253: recipe for target 'src/fw/ssdt-misc.hex' failed" && return 0
-    cd /tmp || return
+        echo "disabled for bug: Makefile:253: recipe for target 'src/fw/ssdt-misc.hex' failed" && return 0
+    cd /tmp/qemutmp || return
     fail=0
     echo '[+] Installing SeaBios dependencies'
     apt-get install git iasl -y
@@ -774,7 +795,7 @@ function seabios_func() {
     fi
     if git clone https://github.com/coreboot/seabios.git; then
         cd seabios || return
-		# git checkout -b 1.12-stable remotes/origin/1.12-stable
+        # git checkout -b 1.12-stable remotes/origin/1.12-stable
         if declare -f -F "replace_seabios_clues"; then
             replace_seabios_clues
         else
@@ -805,7 +826,7 @@ function seabios_func() {
             fi
         else
             echo '[-] Bios compilation failed'
-			exit 1
+                exit 1
         fi
         cd - || return
     else
@@ -964,6 +985,8 @@ function cloning() {
 # Doesn't work ${$1,,}
 COMMAND=$(echo "$1"|tr "[:upper:]" "[:lower:]")
 
+test -z "$COMMAND" && COMMAND="-h"
+
 case $COMMAND in
     '-h')
         usage
@@ -973,14 +996,16 @@ case $COMMAND in
         exit 0;;
 esac
 
-#if ([ "$COMMAND" = "all" ] || [ "$COMMAND" = "libvirt" ]) && [ $# -eq 2 ]; then
-#    if [ id -u "$2" ]; then
-#        username="$2"
-#    else
-#        echo "[-] username $2 doesn't exist"
-#        exit 1
-#    fi
-#fi
+if [ -n "$2" ]
+then
+    username="$2"
+    if [ -n "$(id -u $username 2>/dev/null)" ]; then
+        test "$(id -u $username)" != 0 && echo "[+] Install for non-root user $username"
+    else
+        echo "[-] username $username doesn't exist"
+        exit 1
+    fi
+fi
 
 #check if start with root
 if [ "$EUID" -ne 0 ]; then
@@ -998,17 +1023,38 @@ OS="$(uname -s)"
 #apt-get update && apt-get upgrade
 #make
 
-add-apt-repository universe
+mkdir -p /tmp/qemutmp
+
+echo "[+] apt updating ..."
+add-apt-repository universe >/dev/null
+sed -i 's/# deb-src/deb-src/g' /etc/apt/sources.list
 apt-get update >/dev/null
 
-apt --fix-broken install -y
-apt-get build-dep qemu qemu-system-x86 qemu-kvm -y
+apt --fix-broken install -y >/dev/null
+
+apt-get build-dep qemu qemu-system-x86 qemu-kvm -y >/dev/null
 dpkg -l | grep "^ii" | grep -q "language-pack-en" || apt-get install language-pack-en -y
 dpkg -l | grep "^ii" | grep -q "libnfs-dev" || apt-get install libnfs-dev -y
 dpkg -l | grep "^ii" | grep -q "libiscsi-dev" || apt-get install libiscsi-dev-dev -y
 dpkg -l | grep "^ii" | grep -q "apparmor-utils" || apt-get install apparmor-utils -y
 
 case "$COMMAND" in
+'mini')
+    qemu_func
+    if [ "$OS" = "Linux" ]; then
+        install_kvm_linux_apt
+        install_virt_manager
+        install_libguestfs
+        # check if all features enabled
+        virt-host-validate
+        systemctl daemon-reload
+        systemctl restart libvirtd libvirt-guests.service
+        _enable_tcp_bbr
+        grub_iommu
+    elif [ "$OS" = "Darwin" ]; then
+        echo "[-] Nothing for Darwin with mini."
+    fi
+    ;;
 'all')
     qemu_func
     seabios_func
@@ -1055,7 +1101,7 @@ case "$COMMAND" in
     cloning "$2" "$3" "$4" "$5" "$6" "$7";;
 'noip')
     if [ "$OS" = "Linux" ]; then
-        cd /tmp || return
+        cd /tmp/qemutmp || return
         test ! -f noip-duc-linux.tar.gz && wget http://www.no-ip.com/client/linux/noip-duc-linux.tar.gz
         tar xf noip-duc-linux.tar.gz
         rm noip-duc-linux.tar.gz
