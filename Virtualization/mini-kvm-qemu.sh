@@ -192,7 +192,7 @@ function install_libguestfs() {
     apt purge -y "libguestfs-*"  
 
     apt install gperf flex bison libaugeas-dev libhivex-dev supermin ocaml-nox libhivex-ocaml genisoimage libhivex-ocaml-dev libmagic-dev libjansson-dev -y 2>/dev/null
-    cd /tmp/qemutmp || return
+    cd ${BUILDTMPDIR} || return
     test ! -s "libguestfs-$libguestfs_version.tar.gz" && wget "http://download.libguestfs.org/1.40-stable/libguestfs-$libguestfs_version.tar.gz"
     tar xf "libguestfs-$libguestfs_version.tar.gz"
     cd libguestfs-$libguestfs_version || return
@@ -223,7 +223,7 @@ function install_libvmi() {
         # The -s switch is a shorthand for -gdb tcp::1234
 
         # LibVMI
-    cd /tmp/qemutmp || return
+    cd ${BUILDTMPDIR} || return
 
     if [ ! -d "libvmi" ]; then
         git clone https://github.com/libvmi/libvmi.git
@@ -243,7 +243,7 @@ function install_libvmi() {
         /sbin/ldconfig
 
         # LibVMI Python
-        cd /tmp/qemutmp || return
+        cd ${BUILDTMPDIR} || return
 
     if [ ! -d "python_Libvmi" ]; then
         # actual
@@ -264,15 +264,15 @@ function install_libvmi() {
         python3 setup.py install
 
         # Rekall
-        cd /tmp/qemutmp || return
+        cd ${BUILDTMPDIR} || return
 
     if [ ! -d "rekall" ]; then
         git clone https://github.com/google/rekall.git
         echo "[+] Cloned Rekall repo"
     fi
 
-        virtualenv /tmp/qemutmp/MyEnv
-        source /tmp/qemutmp/MyEnv/bin/activate
+        virtualenv ${BUILDTMPDIR}/MyEnv
+        source ${BUILDTMPDIR}/MyEnv/bin/activate
 
         if [ -z "$(which pip3)" ]
         then
@@ -360,7 +360,7 @@ EOH
         oldpkgs=$(dpkg -l|grep "libvirt-[0-9]\{1,2\}\.[0-9]\{1,2\}\.[0-9]\{1,2\}"|cut -d " " -f 3)
         test -n "$oldpkgs" && echo "$oldpkgs" | xargs apt purge -y 2>/dev/null
 
-    cd /tmp/qemutmp || return
+    cd ${BUILDTMPDIR} || return
     if [ ! -f  libvirt-$libvirt_version.tar.xz ]; then
         wget https://libvirt.org/sources/libvirt-$libvirt_version.tar.xz
     fi
@@ -417,7 +417,7 @@ EOH
             aa-complain $file || true
         fi 
     done
-    cd /tmp/qemutmp || return
+    cd ${BUILDTMPDIR} || return
 
     if [ ! -f v$libvirt_version.zip ]; then
         wget https://github.com/libvirt/libvirt-python/archive/v$libvirt_version.zip
@@ -492,7 +492,7 @@ function install_virt_manager() {
     pip3 install PyGObject -U
     pip install PyGObject -U
 
-    cd /tmp/qemutmp || return
+    cd ${BUILDTMPDIR} || return
         test ! -f "libvirt-glib-1.0.0.tar.gz" && wget https://libvirt.org/sources/glib/libvirt-glib-1.0.0.tar.gz
     if [ -f "libvirt-glib-1.0.0.tar.gz" ]
            then
@@ -637,13 +637,13 @@ function replace_seabios_clues_public() {
 function qemu_func() {
 
     #todo: add task check for all task
-    debfiles="$(ls -A /tmp/qemutmp/qemu-$qemu_version/qemu-${qemu_version}*.deb 2>/dev/null)"
+    debfiles="$(ls -A ${BUILDTMPDIR}/qemu-$qemu_version/qemu-${qemu_version}*.deb 2>/dev/null)"
 
-    if [ -n "$debfiles" -a -f "/tmp/qemutmp/task.qemu.done" ]
+    if [ -n "$debfiles" -a -f "${BUILDTMPDIR}/task.qemu.done" ]
     then
         echo "[+] qemu already compiled."
         echo "$debfiles"
-        echo "[-] remove /tmp/qemutmp/task.qemu.done file for re-build"
+        echo "[-] remove ${BUILDTMPDIR}/task.qemu.done file for re-build"
         return 0
     fi
 
@@ -667,7 +667,7 @@ function qemu_func() {
         brew install pkg-config libtool jpeg gnutls glib ncurses pixman libpng vde gtk+3 libssh2 libssh2 libvirt snappy libcapn gperftools glib -y
     fi
 
-    cd /tmp/qemutmp || exit 1
+    cd ${BUILDTMPDIR} || exit 1
 
     echo '[+] Downloading QEMU source code'
     if [ ! -f qemu-$qemu_version.tar.xz ]; then
@@ -786,7 +786,7 @@ function qemu_func() {
 
 function seabios_func() {
         echo "disabled for bug: Makefile:253: recipe for target 'src/fw/ssdt-misc.hex' failed" && return 0
-    cd /tmp/qemutmp || return
+    cd ${BUILDTMPDIR} || return
     fail=0
     echo '[+] Installing SeaBios dependencies'
     apt-get install git iasl -y
@@ -1023,7 +1023,9 @@ OS="$(uname -s)"
 #apt-get update && apt-get upgrade
 #make
 
-mkdir -p /tmp/qemutmp
+export BUILDTMPDIR="${HOME}/tmp/qemubuild/"
+
+mkdir -p ${BUILDTMPDIR}
 
 echo "[+] apt updating ..."
 add-apt-repository universe >/dev/null
@@ -1101,7 +1103,7 @@ case "$COMMAND" in
     cloning "$2" "$3" "$4" "$5" "$6" "$7";;
 'noip')
     if [ "$OS" = "Linux" ]; then
-        cd /tmp/qemutmp || return
+        cd ${BUILDTMPDIR} || return
         test ! -f noip-duc-linux.tar.gz && wget http://www.no-ip.com/client/linux/noip-duc-linux.tar.gz
         tar xf noip-duc-linux.tar.gz
         rm noip-duc-linux.tar.gz
