@@ -55,7 +55,7 @@ qemu_version=4.0.0
 # changelog - https://libvirt.org/news.html
 libvirt_version=5.3.0
 # https://virt-manager.org/download/
-virt_viewer_version=8.0.0
+virt_viewer_version=8.0
 # virt-manager - https://github.com/virt-manager/virt-manager/releases
 virt_manager_version=2.1.0
 # http://download.libguestfs.org/
@@ -337,6 +337,8 @@ function install_libvirt() {
     # http://ask.xmodulo.com/compile-virt-manager-debian-ubuntu.html
     #rm -r /usr/local/lib/python2.7/dist-packages/libvirt*
 
+	rm -f "${BUILDTMPDIR}/task.libvirt.done"
+
         # doomedraven changed to libvirtinstall - so later not to forget what it is intended for
     if [ ! -f /etc/apt/preferences.d/libvirtinstall ]; then
     # set to hold to avoid side problems
@@ -351,7 +353,7 @@ EOH
     fi
 
     echo "[+] Checking/deleting old versions of Libvirt"
-    apt-get purge libvirt0 libvirt-bin -y 2>/dev/null
+    apt-get purge libvirt0 libvirt-bin -y >/dev/null
         oldpkgs=$(dpkg -l|grep "libvirt-[0-9]\{1,2\}\.[0-9]\{1,2\}\.[0-9]\{1,2\}"|cut -d " " -f 3)
         test -n "$oldpkgs" && echo "$oldpkgs" | xargs apt purge -y 2>/dev/null
 
@@ -362,9 +364,9 @@ EOH
     tar xf libvirt-$libvirt_version.tar.xz
     cd libvirt-$libvirt_version || return
     if [ "$OS" = "Linux" ]; then
-        apt-get install python-dev python3-dev unzip numad glib-2.0 libglib2.0-dev libsdl1.2-dev lvm2 python-pip python-libxml2 python3-libxml2 ebtables libosinfo-1.0-dev libnl-3-dev libnl-route-3-dev libyajl-dev xsltproc libapparmor-dev libdevmapper-dev libpciaccess-dev dnsmasq dmidecode librbd-dev -y 2>/dev/null
+        apt-get install python-dev python3-dev unzip numad glib-2.0 libglib2.0-dev libsdl1.2-dev lvm2 python-pip python-libxml2 python3-libxml2 ebtables libosinfo-1.0-dev libnl-3-dev libnl-route-3-dev libyajl-dev xsltproc libapparmor-dev libdevmapper-dev libpciaccess-dev dnsmasq dmidecode librbd-dev -y >/dev/null
         #apt-get install apparmor-profiles apparmor-profiles-extra apparmor-utils libapparmor-dev python-apparmor libapparmor-perl -y
-        pip install ipaddr
+        pip install ipaddr >/dev/null
         # --prefix=/usr --localstatedir=/var --sysconfdir=/etc
         ./autogen.sh --system  --with-qemu=yes --with-dtrace --with-numad --disable-nls --with-openvz=no --with-vmware=no --with-phyp=no --with-xenapi=no --with-libxl=no  --with-vbox=no --with-lxc=no --with-vz=no   --with-esx=no --with-hyperv=no --with-yajl=yes --with-secdriver-apparmor=yes --with-apparmor-profiles
         make -j$(nproc)
@@ -443,12 +445,13 @@ EOH
         if [ ! -z "$username" ]; then
             usermod -G $groupname -a "$username"
         fi
-        echo "[+] Build libvirt done, you should logout and login "
     fi
-
+    echo "[+] Build libvirt done, you should logout and login "
+	date > "${BUILDTMPDIR}/task.libvirt.done"
 }
 
-function install_virt_manager() {
+function virt_deps()
+{
     # from build-dep
     apt install libgirepository1.0-dev gtk-doc-tools python-pip python3-pip gir1.2-govirt-1.0 libgovirt-dev \
     libgovirt-common libgovirt2 gir1.2-rest-0.7 unzip intltool augeas-doc ifupdown wodim cdrkit-doc indicator-application \
@@ -481,13 +484,20 @@ function install_virt_manager() {
     gstreamer1.0-x adwaita-icon-theme at-spi2-core augeas-lenses bridge-utils cpu-checker dconf-gsettings-backend dconf-service \
     fontconfig fontconfig-config fonts-dejavu-core genisoimage gir1.2-appindicator3-0.1 gir1.2-secret-1 -y
     # should be installed first
+}
+
+function install_virt_manager() {
+    cd ${BUILDTMPDIR} || return
+
+	rm -f "${BUILDTMPDIR}/task.virtmanager.done"
+
+	virt_deps > /dev/null
 
     pip install pycairo
     pip3 install pycairo
     pip3 install PyGObject -U
     pip install PyGObject -U
 
-    cd ${BUILDTMPDIR} || return
         test ! -f "libvirt-glib-1.0.0.tar.gz" && wget https://libvirt.org/sources/glib/libvirt-glib-1.0.0.tar.gz
     if [ -f "libvirt-glib-1.0.0.tar.gz" ]
     then
@@ -520,18 +530,108 @@ function install_virt_manager() {
     else
         echo "export LIBVIRT_DEFAULT_URI=qemu:///system" >> "$HOME/.bashrc"
     fi
-        echo "[+] install virt-manager done"
+	date > "${BUILDTMPDIR}/task.virtmanager.done"
+    echo "[+] install virt-manager done"
+}
+
+function install_virt_viewer() {
+    cd ${BUILDTMPDIR} || return
+
+	rm -f "${BUILDTMPDIR}/task.virtviewer.done"
+
+	virt_deps > /dev/null
+
+    #pip install pycairo
+    #pip3 install pycairo
+    #pip3 install PyGObject -U
+    #pip install PyGObject -U
+
+	# https://www.spice-space.org/download.html
+
+	test ! -f spice-protocol-0.12.15.tar.bz2 && wget https://www.spice-space.org/download/releases/spice-protocol-0.12.15.tar.bz2
+	rm -rf spice-protocol-0.12.15
+	tar xvfj spice-protocol-0.12.15.tar.bz2
+	cd spice-protocol-0.12.15
+		fail=0
+        ./configure --prefix=/usr/local/spice-protocol || fail=$?
+		if [ $fail -ne 0 ]
+		then
+			echo "[-] configure failed."
+			exit $fail
+		fi
+		rm -rf /usr/local/spice-protocol
+	make && make install
+
+
+	test ! -f spice-gtk-0.36.tar.bz2 && wget https://www.spice-space.org/download/gtk/spice-gtk-0.36.tar.bz2
+	rm -rf spice-gtk-0.36
+	tar xvfj spice-gtk-0.36.tar.bz2
+	cd spice-gtk-0.36
+	bash
+		fail=0
+        ./configure --prefix=/usr/local/spice-gtk || fail=$?
+		if [ $fail -ne 0 ]
+		then
+			echo "[-] configure failed."
+			exit $fail
+		fi
+
+
+
+		test ! -f "virt-viewer-${virt_viewer_version}.tar.gz" && wget https://virt-manager.org/download/sources/virt-viewer/virt-viewer-${virt_viewer_version}.tar.gz
+		rm -rf virt-viewer-${virt_viewer_version}
+        tar xf virt-viewer-${virt_viewer_version}.tar.gz
+        cd virt-viewer-${virt_viewer_version}
+		apt-get install gobject-introspection intltool pkg-config python-lxml python3-libxml2 libxml2-dev libxslt-dev python-dev gir1.2-gtk-vnc-2.0 gir1.2-spiceclientgtk-3.0 libgtk-3-dev libgtk-vnc-2.0-dev libspice-client-gtk-3.0-dev -y >/dev/null
+
+		#cat configure.ac | grep -q 'SPICE_GTK_REQUIRED="0.34"' || sed -i -E 's/SPICE_GTK_REQUIRED="0.3[2345]"/SPICE_GTK_REQUIRED="0.34"/g' configure configure.ac 
+		#cat configure.ac | grep 'SPICE_GTK_REQUIRED=' || true
+
+        #./configure --prefix=/usr --libexecdir=/usr/lib/qemu --localstatedir=/var --bindir=/usr/bin/${QTARGETS} --enable-gnutls --enable-docs --enable-gtk --enable-vnc --enable-vnc-sasl --enable-vnc-png --enable-vnc-jpeg --enable-curl --enable-kvm  --enable-linux-aio --enable-cap-ng --enable-vhost-net --enable-vhost-crypto --enable-spice --enable-usb-redir --enable-lzo --enable-snappy --enable-bzip2 --enable-coroutine-pool --enable-libssh2 --enable-libxml2 --enable-tcmalloc --enable-replication --enable-tools --enable-capstone || fail=$?
+		fail=0
+        ./configure --prefix=/usr --localstatedir=/var --sysconfdir=/etc/virt-viewer --sharedstatedir=/usr/share/virt-viewer --with-gtk-vnc --with-spice-gtk --with-ovirt || fail=$?
+		if [ $fail -ne 0 ]
+		then
+			echo "[-] configure failed."
+			exit $fail
+		fi
+		filelist=`grep -R '/missing aclocal-1.16' * | awk -F':' '{print $1}'`;sed -i -e 's/missing aclocal-1.16/missing aclocal-1.15/g' $filelist || true
+		filelist=`grep -R '/missing automake-1.16' * | awk -F':' '{print $1}'`;sed -i -e 's/missing automake-1.16/missing automake-1.15/g' $filelist || true
+		make -j`nproc`
+
+		bash
+
+		exit 0
+
+        aclocal && libtoolize --force
+        automake --add-missing
+        ./configure
+        make -j$(nproc)
+        #ToDo add blacklist
+        checkinstall --pkgname=libvirt-glib-1.0-0 --default
+        test ! -f gir1.2-libvirt-glib-1.0_1.0.0-1_amd64.deb && wget http://launchpadlibrarian.net/297448356/gir1.2-libvirt-glib-1.0_1.0.0-1_amd64.deb
+        dpkg -i gir1.2-libvirt-glib-1.0_1.0.0-1_amd64.deb
+
+        /sbin/ldconfig
+
+		exit $?
+
+    cd "virt-manager" || exit 1
+    apt-get install gobject-introspection intltool pkg-config python-lxml python3-libxml2 libxml2-dev libxslt-dev python-dev gir1.2-gtk-vnc-2.0 gir1.2-spiceclientgtk-3.0 libgtk-3-dev -y
+    # py3
+    python3 setup.py build
+    python3 setup.py install
+    if [ "$SHELL" = "/bin/zsh" ] || [ "$SHELL" = "/usr/bin/zsh" ] ; then
+        echo "export LIBVIRT_DEFAULT_URI=qemu:///system" >> "$HOME/.zsh"
+    else
+        echo "export LIBVIRT_DEFAULT_URI=qemu:///system" >> "$HOME/.bashrc"
+    fi
+	date > "${BUILDTMPDIR}/task.virtviewer.done"
+    echo "[+] install virt-viewer done"
 }
 
 function install_kvm_linux_apt() {
 
-    apt-get install build-essential python-pip python3-pip gcc pkg-config cpu-checker intltool -y >/dev/null
-    apt-get install gtk-update-icon-cache -y >/dev/null
-
-    # WSL support
-    apt-get install gcc make gnutls-bin -y >/dev/null
-    # remove old
-    apt-get purge libvirt0 libvirt-bin -y >/dev/null
     install_libvirt
 
     systemctl enable libvirtd.service
@@ -629,8 +729,7 @@ function replace_seabios_clues_public() {
 }
 
 function qemu_func() {
-    pending_task_func qemu || return 0
-
+	rm -f "${BUILDTMPDIR}/task.qemu.done"
     if [ -z "$(which pip)" ]
     then
         echo "command pip not found, try to install it first (apt install python-pip)"
@@ -716,7 +815,8 @@ function qemu_func() {
                     dpkg -r ubuntu-vm-builder python-vm-builder >/dev/null 2>&1
                         oldpkgs="$(dpkg -l |grep qemu |cut -d ' ' -f 3)"
                         echo "[-] removinge old qemu packages: $oldpkgs ..."
-                        test -n "$oldpkgs" && echo "$oldpkgs sgabios" | xargs apt purge -y >/dev/null 2>&1
+                        test -z "$oldpkgs" || echo "$oldpkgs" | xargs apt purge -y >/dev/null 
+						apt purge -y sgabios >/dev/null || true
                 
                     checkinstall -D --pkgname=qemu-$qemu_version --nodoc --showinstall=no --default || fail=$?
                         dpkg -l | grep '^ii' | grep -q "qemu-$qemu_version" || fail=$?
@@ -765,7 +865,7 @@ function qemu_func() {
         dpkg --get-selections | grep "libvirt" | xargs apt-mark hold
         # apt-mark unhold qemu
     fi
-
+	date > "${BUILDTMPDIR}/task.qemu.done"
 }
 
 function seabios_func() {
@@ -1025,6 +1125,14 @@ function apt_pkg_init()
     dpkg -l | grep "^ii" | grep -q "libnfs-dev" || apt-get install libnfs-dev -y
     dpkg -l | grep "^ii" | grep -q "libiscsi-dev" || apt-get install libiscsi-dev-dev -y
     dpkg -l | grep "^ii" | grep -q "apparmor-utils" || apt-get install apparmor-utils -y
+
+    apt-get install build-essential python-pip python3-pip gcc pkg-config cpu-checker intltool -y >/dev/null
+    apt-get install gtk-update-icon-cache -y >/dev/null
+
+    # WSL support
+    apt-get install gcc make gnutls-bin -y >/dev/null
+    # remove old
+    # apt-get purge libvirt0 libvirt-bin -y >/dev/null
 }
 
 # return 0 for at least one task pending, or return 1 for all tasks are done
@@ -1038,37 +1146,71 @@ function pending_task_func()
         case "$item" in
 'qemu')
             debfiles="$(ls -A ${BUILDTMPDIR}/qemu-$qemu_version/qemu-${qemu_version}*.deb 2>/dev/null || true)"
-            if [ -n "$debfiles" -a -f "${BUILDTMPDIR}/task.qemu.done" ]
+            if [ -n "$debfiles" -a -f "${BUILDTMPDIR}/task.${item}.done" ]
             then
-                echo "[+] qemu already compiled."
+                echo "[+] $item already compiled."
                 echo "$debfiles"
-                echo "[-] remove ${BUILDTMPDIR}/task.qemu.done file for re-build"
+                echo "[-] remove ${BUILDTMPDIR}/task.${item}.done file for re-build"
                 continue
             fi
             let chkcnt=$chlcnt+1
         ;;
+'libvirt')
+            debfiles="$(ls -A ${BUILDTMPDIR}/libvirt-$libvirt_version/libvirt-${libvirt_version}*.deb 2>/dev/null || true)"
+            if [ -n "$debfiles" -a -f "${BUILDTMPDIR}/task.${item}.done" ]
+            then
+                echo "[+] $item already compiled."
+                echo "$debfiles"
+                echo "[-] remove ${BUILDTMPDIR}/task.${item}.done file for re-build"
+                continue
+            fi
+            let chkcnt=$chkcnt+1
+        ;;
+'virtmanager')
+            if [ -f "${BUILDTMPDIR}/task.${item}.done" ]
+            then
+                echo "[+] $item already compiled."
+                echo "[-] remove ${BUILDTMPDIR}/task.${item}.done file for re-build"
+                continue
+            fi
+            let chkcnt=$chkcnt+1
+        ;;
+'virtviewer')
+            debfiles="$(ls -A ${BUILDTMPDIR}/qemu-$qemu_version/qemu-${qemu_version}*.deb 2>/dev/null || true)"
+            if [ -n "$debfiles" -a -f "${BUILDTMPDIR}/task.${item}.done" ]
+            then
+                echo "[+] $item already compiled."
+                echo "$debfiles"
+                echo "[-] remove ${BUILDTMPDIR}/task.${item}.done file for re-build"
+                continue
+            fi
+            let chkcnt=$chkcnt+1
+        ;;
 *)
+            let chkcnt=$chkcnt+1
             echo "[-] unknown task: $item"
         ;;
         esac
     done
     if [ $chkcnt -ne 0 ]
     then
+		apt_pkg_init
         return 0
     fi
-    return 1
+	echo "[+] All tasks is done: $tasks"
+    exit 0
 }
+case "$COMMAND" in
+'all')
+    pending_task_func qemu kvm virtmanager virtviewer libguestfs tcp_bbr grub
+	;;
+*)
+    pending_task_func "$COMMAND"
+	;;
+esac
 
 case "$COMMAND" in
 'all')
-    cnt=0
-    pending_task_func qemu kvm virtviewer libguestfs tcp_bbr grub || cnt=$?
-    if [ $cnt -ne 0 ]
-    then
-        echo "[+] All task is done."
-        exit 0
-    fi
-    apt_pkg_init
     qemu_func
     seabios_func
     if [ "$OS" = "Linux" ]; then
@@ -1110,8 +1252,10 @@ case "$COMMAND" in
 'libvmi')
     install_libvmi;;
 'virtmanager')
+	$0 libvirt || true
     install_virt_manager;;
 'virtviewer')
+	$0 libvirt || true
     install_virt_viewer;;
 'clone')
     cloning "$2" "$3" "$4" "$5" "$6" "$7";;
@@ -1120,7 +1264,7 @@ case "$COMMAND" in
         cd ${BUILDTMPDIR} || return
         test ! -f noip-duc-linux.tar.gz && wget http://www.no-ip.com/client/linux/noip-duc-linux.tar.gz
         tar xf noip-duc-linux.tar.gz
-        rm noip-duc-linux.tar.gz
+        #rm noip-duc-linux.tar.gz
         cd "noip-*" || return
         make install
         crontab -l | { cat; echo "@reboot sleep 10 && /usr/local/bin/noip2 -c /usr/local/etc/no-ip2.conf"; } | crontab -
@@ -1162,8 +1306,5 @@ case "$COMMAND" in
     usage;;
 esac
 
-# clean up
-#rm -f /etc/apt/preferences.d/libvirtinstall
-#apt install virt-viewer -y
 echo "[+] all finished"
 
