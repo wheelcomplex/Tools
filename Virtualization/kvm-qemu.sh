@@ -368,7 +368,7 @@ EOH
         #apt-get install apparmor-profiles apparmor-profiles-extra apparmor-utils libapparmor-dev python-apparmor libapparmor-perl -y
         pip install ipaddr >/dev/null
         # --prefix=/usr --localstatedir=/var --sysconfdir=/etc
-        ./autogen.sh --system  --with-qemu=yes --with-dtrace --with-numad --disable-nls --with-openvz=no --with-vmware=no --with-phyp=no --with-xenapi=no --with-libxl=no  --with-vbox=no --with-lxc=no --with-vz=no   --with-esx=no --with-hyperv=no --with-yajl=yes --with-secdriver-apparmor=yes --with-apparmor-profiles
+        ./autogen.sh --system  --with-qemu=yes --with-dtrace --with-numad --disable-nls --with-openvz=no --with-vmware=no --with-phyp=no --with-xenapi=no --with-libxl=no  --with-vbox=no --with-lxc=yes --with-vz=no   --with-esx=no --with-hyperv=no --with-yajl=yes --with-secdriver-apparmor=yes --with-apparmor-profiles
         make -j$(nproc)
         checkinstall -D --pkgname=libvirt-$libvirt_version --default
         # check if linked correctly
@@ -382,7 +382,11 @@ EOH
 
         if [ ! -z "$libvirt_so_path" ]; then
             # #ln -s /usr/lib64/libvirt-qemu.so /lib/x86_64-linux-gnu/libvirt-qemu.so.0
-            for so_path in $(ls ${libvirt_so_path}libvirt*.so); do ln -sf $so_path /lib/$(uname -m)-linux-gnu/$(basename $so_path) ; done
+            for so_path in $(ls ${libvirt_so_path}libvirt*.so); 
+			do
+				ln -sf $so_path /lib/$(uname -m)-linux-gnu/$(basename $so_path);
+				ln -sf /lib/$(uname -m)-linux-gnu/$(basename $so_path) /lib/$(uname -m)-linux-gnu/$(basename $so_path).0
+			done
         fi
 
     elif [ "$OS" = "Darwin" ]; then
@@ -446,6 +450,12 @@ EOH
             usermod -G $groupname -a "$username"
         fi
     fi
+
+    systemctl enable libvirtd.service
+    systemctl restart libvirtd.service
+    systemctl enable virtlogd.socket
+    systemctl restart virtlogd.socket
+
     echo "[+] Build libvirt done, you should logout and login "
 	date > "${BUILDTMPDIR}/task.libvirt.done"
 }
@@ -631,11 +641,6 @@ function install_virt_viewer() {
 }
 
 function install_kvm_linux_apt() {
-
-    systemctl enable libvirtd.service
-    systemctl restart libvirtd.service
-    systemctl enable virtlogd.socket
-    systemctl restart virtlogd.socket
 
     kvm-ok
 
