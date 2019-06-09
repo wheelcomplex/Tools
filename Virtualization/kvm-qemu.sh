@@ -74,7 +74,7 @@ set -e
 
 function changelog() {
 cat << EndOfCL
-    # 07.06.2019 - add virt-viewer installation
+    # 07.06.2019 - add virt-viewer installation (Ubuntu 19.04 needed)
     # 24.04.2019 - QEMU 4
     # 28.03.2019 - Huge cleanup, fixes, QEMU 4-RC2 testing in dev
     # 24.02.2019 - Add Mosh + support for Linux TCP BBR - https://www.cyberciti.biz/cloud-computing/increase-your-linux-server-internet-speed-with-tcp-bbr-congestion-control/
@@ -151,14 +151,16 @@ function _sed_aux(){
 }
 
 function _enable_tcp_bbr() {
+	rm -f "${BUILDTMPDIR}/task.tcp_bbr.done"
     # https://www.cyberciti.biz/cloud-computing/increase-your-linux-server-internet-speed-with-tcp-bbr-congestion-control/
     # grep 'CONFIG_TCP_CONG_BBR' /boot/config-$(uname -r)
     # grep 'CONFIG_NET_SCH_FQ' /boot/config-$(uname -r)
     # egrep 'CONFIG_TCP_CONG_BBR|CONFIG_NET_SCH_FQ' /boot/config-$(uname -r)
-    echo "net.core.default_qdisc=fq" >> /etc/security/limits.conf
-    echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/security/limits.conf
+    grep -q 'net.core.default_qdisc=fq' /etc/security/limits.conf || echo "net.core.default_qdisc=fq" >> /etc/security/limits.conf
+    grep -q 'net.ipv4.tcp_congestion_control=bbr' /etc/security/limits.conf || echo "net.ipv4.tcp_congestion_control=bbr" >> /etc/security/limits.conf
 
-    sysctl --system
+    sysctl --system >/dev/null
+	date > "${BUILDTMPDIR}/task.tcp_bbr.done"
 }
 
 function _check_brew() {
@@ -551,47 +553,13 @@ function install_virt_viewer() {
 
 	virt_deps > /dev/null
 
-    #pip install pycairo
-    #pip3 install pycairo
-    #pip3 install PyGObject -U
-    #pip install PyGObject -U
-
 	# https://www.spice-space.org/download.html
-
-	test ! -f spice-protocol-0.12.15.tar.bz2 && wget https://www.spice-space.org/download/releases/spice-protocol-0.12.15.tar.bz2
-	rm -rf spice-protocol-0.12.15
-	tar xvfj spice-protocol-0.12.15.tar.bz2
-	cd spice-protocol-0.12.15
-		fail=0
-        ./configure --prefix=/usr/local/spice-protocol || fail=$?
-		if [ $fail -ne 0 ]
-		then
-			echo "[-] configure failed."
-			exit $fail
-		fi
-		rm -rf /usr/local/spice-protocol
-	make && make install
-
-
-	test ! -f spice-gtk-0.36.tar.bz2 && wget https://www.spice-space.org/download/gtk/spice-gtk-0.36.tar.bz2
-	rm -rf spice-gtk-0.36
-	tar xvfj spice-gtk-0.36.tar.bz2
-	cd spice-gtk-0.36
-	bash
-		fail=0
-        ./configure --prefix=/usr/local/spice-gtk || fail=$?
-		if [ $fail -ne 0 ]
-		then
-			echo "[-] configure failed."
-			exit $fail
-		fi
-
-
 
 		test ! -f "virt-viewer-${virt_viewer_version}.tar.gz" && wget https://virt-manager.org/download/sources/virt-viewer/virt-viewer-${virt_viewer_version}.tar.gz
 		rm -rf virt-viewer-${virt_viewer_version}
         tar xf virt-viewer-${virt_viewer_version}.tar.gz
         cd virt-viewer-${virt_viewer_version}
+
 		apt-get install gobject-introspection intltool pkg-config python-lxml python3-libxml2 libxml2-dev libxslt-dev python-dev gir1.2-gtk-vnc-2.0 gir1.2-spiceclientgtk-3.0 libgtk-3-dev libgtk-vnc-2.0-dev libspice-client-gtk-3.0-dev -y >/dev/null
 
 		#cat configure.ac | grep -q 'SPICE_GTK_REQUIRED="0.34"' || sed -i -E 's/SPICE_GTK_REQUIRED="0.3[2345]"/SPICE_GTK_REQUIRED="0.34"/g' configure configure.ac 
@@ -605,42 +573,15 @@ function install_virt_viewer() {
 			echo "[-] configure failed."
 			exit $fail
 		fi
-		filelist=`grep -R '/missing aclocal-1.16' * | awk -F':' '{print $1}'`;sed -i -e 's/missing aclocal-1.16/missing aclocal-1.15/g' $filelist || true
-		filelist=`grep -R '/missing automake-1.16' * | awk -F':' '{print $1}'`;sed -i -e 's/missing automake-1.16/missing automake-1.15/g' $filelist || true
 		make -j`nproc`
-
-		bash
-
-		exit 0
-
-        aclocal && libtoolize --force
-        automake --add-missing
-        ./configure
-        make -j$(nproc)
-        #ToDo add blacklist
-        checkinstall --pkgname=libvirt-glib-1.0-0 --default
-        test ! -f gir1.2-libvirt-glib-1.0_1.0.0-1_amd64.deb && wget http://launchpadlibrarian.net/297448356/gir1.2-libvirt-glib-1.0_1.0.0-1_amd64.deb
-        dpkg -i gir1.2-libvirt-glib-1.0_1.0.0-1_amd64.deb
-
-        /sbin/ldconfig
-
-		exit $?
-
-    cd "virt-manager" || exit 1
-    apt-get install gobject-introspection intltool pkg-config python-lxml python3-libxml2 libxml2-dev libxslt-dev python-dev gir1.2-gtk-vnc-2.0 gir1.2-spiceclientgtk-3.0 libgtk-3-dev -y
-    # py3
-    python3 setup.py build
-    python3 setup.py install
-    if [ "$SHELL" = "/bin/zsh" ] || [ "$SHELL" = "/usr/bin/zsh" ] ; then
-        echo "export LIBVIRT_DEFAULT_URI=qemu:///system" >> "$HOME/.zsh"
-    else
-        echo "export LIBVIRT_DEFAULT_URI=qemu:///system" >> "$HOME/.bashrc"
-    fi
+        checkinstall --pkgname=virt-viewer-${virt_viewer_version} --default
 	date > "${BUILDTMPDIR}/task.virtviewer.done"
     echo "[+] install virt-viewer done"
 }
 
 function install_kvm_linux_apt() {
+
+	rm -f "${BUILDTMPDIR}/task.kvm.done"
 
     kvm-ok
 
@@ -656,6 +597,8 @@ function install_kvm_linux_apt() {
     if [ ! -f /etc/udev/rules.d/50-qemu-kvm.rules ]; then
         echo 'KERNEL=="kvm", GROUP="kvm", MODE="0660"' >> /etc/udev/rules.d/50-qemu-kvm.rules
     fi
+	date > "${BUILDTMPDIR}/task.kvm.done"
+	echo "[+] kvm udev setup done"
 }
 
 
@@ -1169,6 +1112,15 @@ function pending_task_func()
             fi
             let chkcnt=$chkcnt+1
         ;;
+'tcp_bbr')
+            if [ -f "${BUILDTMPDIR}/task.${item}.done" ]
+            then
+                echo "[+] $item already compiled."
+                echo "[-] remove ${BUILDTMPDIR}/task.${item}.done file for re-build"
+                continue
+            fi
+            let chkcnt=$chkcnt+1
+        ;;
 'virtmanager')
             if [ -f "${BUILDTMPDIR}/task.${item}.done" ]
             then
@@ -1181,6 +1133,16 @@ function pending_task_func()
 'virtviewer')
             debfiles="$(ls -A ${BUILDTMPDIR}/qemu-$qemu_version/qemu-${qemu_version}*.deb 2>/dev/null || true)"
             if [ -n "$debfiles" -a -f "${BUILDTMPDIR}/task.${item}.done" ]
+            then
+                echo "[+] $item already compiled."
+                echo "$debfiles"
+                echo "[-] remove ${BUILDTMPDIR}/task.${item}.done file for re-build"
+                continue
+            fi
+            let chkcnt=$chkcnt+1
+        ;;
+'kvm')
+            if [ -f "${BUILDTMPDIR}/task.${item}.done" ]
             then
                 echo "[+] $item already compiled."
                 echo "$debfiles"
