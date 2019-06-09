@@ -632,8 +632,6 @@ function install_virt_viewer() {
 
 function install_kvm_linux_apt() {
 
-    install_libvirt
-
     systemctl enable libvirtd.service
     systemctl restart libvirtd.service
     systemctl enable virtlogd.socket
@@ -658,15 +656,15 @@ function install_kvm_linux_apt() {
 
 function replace_qemu_clues_public() {
     echo '[+] Patching QEMU clues'
-    _sed_aux 's/QEMU HARDDISK/<WOOT> HARDDISK/g' qemu*/hw/ide/core.c 'QEMU HARDDISK was not replaced in core.c'
-    _sed_aux 's/QEMU HARDDISK/<WOOT> HARDDISK/g' qemu*/hw/scsi/scsi-disk.c 'QEMU HARDDISK was not replaced in scsi-disk.c'
-    _sed_aux 's/QEMU DVD-ROM/<WOOT> DVD-ROM/g' qemu*/hw/ide/core.c 'QEMU DVD-ROM was not replaced in core.c'
-    _sed_aux 's/QEMU DVD-ROM/<WOOT> DVD-ROM/g' qemu*/hw/ide/atapi.c 'QEMU DVD-ROM was not replaced in atapi.c'
-    _sed_aux 's/QEMU PenPartner tablet/<WOOT> PenPartner tablet/g' qemu*/hw/usb/dev-wacom.c 'QEMU PenPartner tablet'
-    _sed_aux 's/s->vendor = g_strdup("QEMU");/s->vendor = g_strdup("<WOOT>");/g' qemu*/hw/scsi/scsi-disk.c 'Vendor string was not replaced in scsi-disk.c'
-    _sed_aux 's/QEMU CD-ROM/<WOOT> CD-ROM/g' qemu*/hw/scsi/scsi-disk.c 'Vendor string was not replaced in scsi-disk.c'
-    _sed_aux 's/padstr8(buf + 8, 8, "QEMU");/padstr8(buf + 8, 8, "<WOOT>");/g'  qemu*/hw/ide/atapi.c 'padstr was not replaced in atapi.c'
-    _sed_aux 's/QEMU MICRODRIVE/<WOOT> MICRODRIVE/g' qemu*/hw/ide/core.c 'QEMU MICRODRIVE was not replaced in core.c'
+    _sed_aux 's/QEMU HARDDISK/DavidMortals HARDDISK/g' qemu*/hw/ide/core.c 'QEMU HARDDISK was not replaced in core.c'
+    _sed_aux 's/QEMU HARDDISK/DavidMortals HARDDISK/g' qemu*/hw/scsi/scsi-disk.c 'QEMU HARDDISK was not replaced in scsi-disk.c'
+    _sed_aux 's/QEMU DVD-ROM/DavidMortals DVD-ROM/g' qemu*/hw/ide/core.c 'QEMU DVD-ROM was not replaced in core.c'
+    _sed_aux 's/QEMU DVD-ROM/DavidMortals DVD-ROM/g' qemu*/hw/ide/atapi.c 'QEMU DVD-ROM was not replaced in atapi.c'
+    _sed_aux 's/QEMU PenPartner tablet/DavidMortals PenPartner tablet/g' qemu*/hw/usb/dev-wacom.c 'QEMU PenPartner tablet'
+    _sed_aux 's/s->vendor = g_strdup("QEMU");/s->vendor = g_strdup("DavidMortals");/g' qemu*/hw/scsi/scsi-disk.c 'Vendor string was not replaced in scsi-disk.c'
+    _sed_aux 's/QEMU CD-ROM/DavidMortals CD-ROM/g' qemu*/hw/scsi/scsi-disk.c 'Vendor string was not replaced in scsi-disk.c'
+    _sed_aux 's/padstr8(buf + 8, 8, "QEMU");/padstr8(buf + 8, 8, "DavidMortals");/g'  qemu*/hw/ide/atapi.c 'padstr was not replaced in atapi.c'
+    _sed_aux 's/QEMU MICRODRIVE/DavidMortals MICRODRIVE/g' qemu*/hw/ide/core.c 'QEMU MICRODRIVE was not replaced in core.c'
     _sed_aux 's/KVMKVMKVM\\0\\0\\0/GenuineIntel/g' qemu*/target/i386/kvm.c 'QEMU MICRODRIVE was not replaced in core.c'
     _sed_aux 's/KVMKVMKVM\\0\\0\\0/GenuineIntel/g' qemu*/target/i386/kvm.c 'KVMKVMKVM was not replaced in kvm.c'
     _sed_aux 's/"bochs"/"hawks"/g' qemu*/block/bochs.c 'BOCHS was not replaced in block/bochs.c'
@@ -674,46 +672,46 @@ function replace_qemu_clues_public() {
     _sed_aux 's/Bochs Pseudo/Intel RealTime/g' qemu*/roms/ipxe/src/drivers/net/pnic.c 'Bochs Pseudo was not replaced in roms/ipxe/src/drivers/net/pnic.c'
     # depricated
     #_sed_aux 's/Microsoft Hv/GenuineIntel/g' qemu*/target/i386/kvm.c 'Microsoft Hv was not replaced in target/i386/kvm.c'
-    #_sed_aux 's/Bochs\/Plex86/<WOOT>\/FIRM64/g' qemu*/roms/vgabios/vbe.c 'BOCHS was not replaced in roms/vgabios/vbe.c'
+    #_sed_aux 's/Bochs\/Plex86/DavidMortals\/FIRM64/g' qemu*/roms/vgabios/vbe.c 'BOCHS was not replaced in roms/vgabios/vbe.c'
 }
 
 function replace_seabios_clues_public() {
     echo "[+] Generating SeaBios Kconfig"
     echo "[+] Fixing SeaBios antivms"
-    _sed_aux 's/Bochs/<WOOT>/g' src/config.h 'Bochs was not replaced in src/config.h'
-    _sed_aux 's/BOCHSCPU/<WOOT>/g' src/config.h 'BOCHSCPU was not replaced in src/config.h'
-    _sed_aux 's/"BOCHS "/"<WOOT>"/g' src/config.h 'BOCHS was not replaced in src/config.h'
-    _sed_aux 's/BXPC/<WOOT>/g' src/config.h 'BXPC was not replaced in src/config.h'
-    _sed_aux 's/QEMU0001/<WOOT>/g' src/fw/ssdt-misc.dsl 'QEMU0001 was not replaced in src/fw/ssdt-misc.dsl'
-    _sed_aux 's/QEMU\/Bochs/<WOOT>\/<WOOT>/g' vgasrc/Kconfig 'QEMU\/Bochs was not replaced in vgasrc/Kconfig'
-    _sed_aux 's/qemu /<WOOT> /g' vgasrc/Kconfig 'qemu was not replaced in vgasrc/Kconfig'
+    _sed_aux 's/Bochs/DavidMortals/g' src/config.h 'Bochs was not replaced in src/config.h'
+    _sed_aux 's/BOCHSCPU/DavidMortals/g' src/config.h 'BOCHSCPU was not replaced in src/config.h'
+    _sed_aux 's/"BOCHS "/"DavidMortals"/g' src/config.h 'BOCHS was not replaced in src/config.h'
+    _sed_aux 's/BXPC/DavidMortals/g' src/config.h 'BXPC was not replaced in src/config.h'
+    _sed_aux 's/QEMU0001/DavidMortals/g' src/fw/ssdt-misc.dsl 'QEMU0001 was not replaced in src/fw/ssdt-misc.dsl'
+    _sed_aux 's/QEMU\/Bochs/DavidMortals\/DavidMortals/g' vgasrc/Kconfig 'QEMU\/Bochs was not replaced in vgasrc/Kconfig'
+    _sed_aux 's/qemu /DavidMortals /g' vgasrc/Kconfig 'qemu was not replaced in vgasrc/Kconfig'
 
     FILES=(
         src/hw/blockcmd.c
         src/fw/paravirt.c
     )
     for file in "${FILES[@]}"; do
-        _sed_aux 's/"QEMU/"<WOOT>/g' "$file" "QEMU was not replaced in $file"
+        _sed_aux 's/"QEMU/"DavidMortals/g' "$file" "QEMU was not replaced in $file"
     done
 
-    _sed_aux 's/"QEMU"/"<WOOT>"/g' src/hw/blockcmd.c '"QEMU" was not replaced in  src/hw/blockcmd.c'
+    _sed_aux 's/"QEMU"/"DavidMortals"/g' src/hw/blockcmd.c '"QEMU" was not replaced in  src/hw/blockcmd.c'
 
     FILES=(
         "src/fw/acpi-dsdt.dsl"
         "src/fw/q35-acpi-dsdt.dsl"
     )
     for file in "${FILES[@]}"; do
-        _sed_aux 's/"BXPC"/"<WOOT>"/g' "$file" "BXPC was not replaced in $file"
+        _sed_aux 's/"BXPC"/"DavidMortals"/g' "$file" "BXPC was not replaced in $file"
     done
-    _sed_aux 's/"BXPC"/"<WOOT>"/g' "src/fw/ssdt-pcihp.dsl" 'BXPC was not replaced in src/fw/ssdt-pcihp.dsl'
-    _sed_aux 's/"BXDSDT"/"<WOOT>"/g' "src/fw/ssdt-pcihp.dsl" 'BXDSDT was not replaced in src/fw/ssdt-pcihp.dsl'
-    _sed_aux 's/"BXPC"/"<WOOT>"/g' "src/fw/ssdt-proc.dsl" 'BXPC was not replaced in "src/fw/ssdt-proc.dsl"'
-    _sed_aux 's/"BXSSDT"/"<WOOT>"/g' "src/fw/ssdt-proc.dsl" 'BXSSDT was not replaced in src/fw/ssdt-proc.dsl'
-    _sed_aux 's/"BXPC"/"<WOOT>"/g' "src/fw/ssdt-misc.dsl" 'BXPC was not replaced in src/fw/ssdt-misc.dsl'
-    _sed_aux 's/"BXSSDTSU"/"<WOOT>"/g' "src/fw/ssdt-misc.dsl" 'BXDSDT was not replaced in src/fw/ssdt-misc.dsl'
-    _sed_aux 's/"BXSSDTSUSP"/"<WOOT>"/g' src/fw/ssdt-misc.dsl 'BXSSDTSUSP was not replaced in src/fw/ssdt-misc.dsl'
-    _sed_aux 's/"BXSSDT"/"<WOOT>"/g' src/fw/ssdt-proc.dsl 'BXSSDT was not replaced in src/fw/ssdt-proc.dsl'
-    _sed_aux 's/"BXSSDTPCIHP"/"<WOOT>"/g' src/fw/ssdt-pcihp.dsl 'BXPC was not replaced in src/fw/ssdt-pcihp.dsl'
+    _sed_aux 's/"BXPC"/"DavidMortals"/g' "src/fw/ssdt-pcihp.dsl" 'BXPC was not replaced in src/fw/ssdt-pcihp.dsl'
+    _sed_aux 's/"BXDSDT"/"DavidMortals"/g' "src/fw/ssdt-pcihp.dsl" 'BXDSDT was not replaced in src/fw/ssdt-pcihp.dsl'
+    _sed_aux 's/"BXPC"/"DavidMortals"/g' "src/fw/ssdt-proc.dsl" 'BXPC was not replaced in "src/fw/ssdt-proc.dsl"'
+    _sed_aux 's/"BXSSDT"/"DavidMortals"/g' "src/fw/ssdt-proc.dsl" 'BXSSDT was not replaced in src/fw/ssdt-proc.dsl'
+    _sed_aux 's/"BXPC"/"DavidMortals"/g' "src/fw/ssdt-misc.dsl" 'BXPC was not replaced in src/fw/ssdt-misc.dsl'
+    _sed_aux 's/"BXSSDTSU"/"DavidMortals"/g' "src/fw/ssdt-misc.dsl" 'BXDSDT was not replaced in src/fw/ssdt-misc.dsl'
+    _sed_aux 's/"BXSSDTSUSP"/"DavidMortals"/g' src/fw/ssdt-misc.dsl 'BXSSDTSUSP was not replaced in src/fw/ssdt-misc.dsl'
+    _sed_aux 's/"BXSSDT"/"DavidMortals"/g' src/fw/ssdt-proc.dsl 'BXSSDT was not replaced in src/fw/ssdt-proc.dsl'
+    _sed_aux 's/"BXSSDTPCIHP"/"DavidMortals"/g' src/fw/ssdt-pcihp.dsl 'BXPC was not replaced in src/fw/ssdt-pcihp.dsl'
 
     FILES=(
         src/fw/q35-acpi-dsdt.dsl
@@ -1214,6 +1212,7 @@ case "$COMMAND" in
     qemu_func
     seabios_func
     if [ "$OS" = "Linux" ]; then
+		install_libvirt
         install_kvm_linux_apt
         install_libguestfs
         install_virt_manager
@@ -1233,6 +1232,7 @@ case "$COMMAND" in
 'seabios')
     seabios_func;;
 'kvm')
+	$0 libvirt || true
     install_kvm_linux_apt;;
 'haxm')
     install_haxm_mac;;
